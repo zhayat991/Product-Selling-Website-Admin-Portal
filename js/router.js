@@ -102,12 +102,14 @@ function secWelcome() {
 
 function prodCard(p) {
   const buy = canBuy(p);
+  const isOutOfStock = p.stock !== undefined && p.stock <= 0;
   const qid = "q-pc-" + p.id;
+  const imgSrc = (p.img && (p.img.front || p.img.pair)) || "assets/images/products/front.webp";
   return `
-    <article class="pc reveal">
+    <article class="pc reveal ${isOutOfStock ? 'pc-out' : ''}">
       <div class="pc-img">
-        <span class="pill pc-size">${p.badge || p.weight}</span>
-        <img src="${p.img.front}" alt="${p.name} ${p.weight}" loading="lazy">
+        <span class="pill pc-size">${isOutOfStock ? 'Out of Stock' : (p.badge || p.weight)}</span>
+        <img src="${imgSrc}" alt="${p.name} ${p.weight}" loading="lazy">
       </div>
       <div class="pc-body">
         <h3>${p.title}<span class="pc-w">(${p.weight})</span></h3>
@@ -121,10 +123,10 @@ function prodCard(p) {
         <div class="buy-row">
           ${qtyCtl(qid, 1)}
           <button class="btn btn-gold btn-sm" data-act="add" data-q="${qid}" data-pid="${p.id}" ${buy ? "" : "disabled"}>
-            ${ICON.bag} Add to Cart
+            ${buy ? `${ICON.bag} Add to Cart` : "Out of Stock"}
           </button>
           <button class="btn btn-line btn-sm" data-act="buy" data-q="${qid}" data-pid="${p.id}" ${buy ? "" : "disabled"}>
-            Buy Now
+            ${buy ? "Buy Now" : "Unavailable"}
           </button>
         </div>
         <a class="pc-more" href="#/product/${p.slug}">View full product details →</a>
@@ -134,6 +136,7 @@ function prodCard(p) {
 }
 
 function secFeatured() {
+  const prods = (typeof getProducts === "function") ? getProducts() : (window.PRODUCTS || []);
   return `
     <section class="sec sec-black" id="featured" aria-label="Featured Collection">
       <div class="wrap">
@@ -144,7 +147,7 @@ function secFeatured() {
           <p class="lead">Select your preferred jar size. Same gold standard recipe in each package.</p>
         </div>
         <div class="pgrid">
-          ${(window.PRODUCTS || []).map(p => prodCard(p)).join("")}
+          ${prods.map(p => prodCard(p)).join("")}
         </div>
       </div>
     </section>
@@ -337,39 +340,45 @@ views.home = () => ({
   html: secHero() + secTrustStrip() + secWelcome() + secFeatured() + secWhy() + secIngredients() + secMoments() + secShowcase() + secAbout() + secReviews() + secCTA()
 });
 
-views.shop = () => ({
-  title: `Shop | ${window.BRAND_CONFIG.brand.name}`,
-  html: `
-    <header class="page-head">
-      <div class="wrap">
-        <nav class="crumbs" aria-label="Breadcrumb"><a href="#/">Home</a> / <span>Shop</span></nav>
-        <h1>Our Pure Honey Nut Collection</h1>
-        <p>Choose from our convenient 500g personal jar or 1kg family value pack.</p>
-      </div>
-    </header>
-    <section class="page-dark sec" style="padding-top:40px">
-      <div class="wrap">
-        <div class="pgrid">
-          ${(window.PRODUCTS || []).map(p => prodCard(p)).join("")}
+views.shop = () => {
+  const prods = (typeof getProducts === "function") ? getProducts() : (window.PRODUCTS || []);
+  return {
+    title: `Shop | ${window.BRAND_CONFIG.brand.name}`,
+    html: `
+      <header class="page-head">
+        <div class="wrap">
+          <nav class="crumbs" aria-label="Breadcrumb"><a href="#/">Home</a> / <span>Shop</span></nav>
+          <h1>Our Pure Honey Nut Collection</h1>
+          <p>Choose from our convenient jar sizes or order our artisanal blends.</p>
         </div>
-      </div>
-    </section>
-    ${secTrustStrip()}
-    ${secWhy()}
-    ${secCTA()}
-  `
-});
+      </header>
+      <section class="page-dark sec" style="padding-top:40px">
+        <div class="wrap">
+          <div class="pgrid">
+            ${prods.map(p => prodCard(p)).join("")}
+          </div>
+        </div>
+      </section>
+      ${secTrustStrip()}
+      ${secWhy()}
+      ${secCTA()}
+    `
+  };
+};
 
 views.products = views.shop;
 
 views.product = (slug) => {
-  const p = getPBySlug(slug) || window.PRODUCTS[0];
+  const allProds = (typeof getProducts === "function") ? getProducts() : (window.PRODUCTS || []);
+  const p = getPBySlug(slug) || allProds[0];
   if (!p) return views.shop();
   const buy = canBuy(p);
+  const isOutOfStock = p.stock !== undefined && p.stock <= 0;
   const qid = "q-pdp";
   const D = window.BRAND_CONFIG.delivery;
   const C = window.BRAND_CONFIG.contact;
-  const sameGroup = (window.PRODUCTS || []).filter(x => x.group === p.group);
+  const sameGroup = allProds.filter(x => x.group && x.group === p.group);
+  const imgSrc = (p.img && (p.img.front || p.img.pair)) || "assets/images/products/front.webp";
 
   return {
     title: `${p.name} (${p.weight}) | ${window.BRAND_CONFIG.brand.name}`,
@@ -386,23 +395,23 @@ views.product = (slug) => {
           <div class="pdp">
             <div>
               <div class="gal-main">
-                <img class="main" id="galMain" src="${p.img.front}" alt="${p.name} ${p.weight}">
+                <img class="main" id="galMain" src="${imgSrc}" alt="${p.name} ${p.weight}">
                 <img class="wm" src="${window.BRAND_CONFIG.logo.src}" alt="${window.BRAND_CONFIG.brand.name}">
               </div>
               <div class="thumbs">
                 <button class="thumb" aria-pressed="true" data-act="thumb" data-pid="${p.id}" data-src="front" data-alt="front jar view">
-                  <img src="${p.img.front}" alt="Front">
+                  <img src="${(p.img && p.img.front) || imgSrc}" alt="Front">
                 </button>
                 <button class="thumb" aria-pressed="false" data-act="thumb" data-pid="${p.id}" data-src="back" data-alt="back label view">
-                  <img src="${p.img.back}" alt="Back">
+                  <img src="${(p.img && p.img.back) || imgSrc}" alt="Back">
                 </button>
                 <button class="thumb" aria-pressed="false" data-act="thumb" data-pid="${p.id}" data-src="pair" data-alt="product collection view">
-                  <img src="${p.img.pair}" alt="Pair">
+                  <img src="${(p.img && p.img.pair) || imgSrc}" alt="Pair">
                 </button>
               </div>
             </div>
             <div class="pdp-info">
-              <span class="pill">${p.badge || "Signature Selection"}</span>
+              <span class="pill">${isOutOfStock ? "Out of Stock" : (p.badge || "Signature Selection")}</span>
               <h1 style="margin-top:14px">${p.title}</h1>
               <div class="price">
                 <span>${priceTxt(p)}</span>
@@ -421,10 +430,10 @@ views.product = (slug) => {
               <div class="buy-row" style="margin-top:24px">
                 ${qtyCtl(qid, 1)}
                 <button class="btn btn-gold" data-act="add" data-q="${qid}" data-pid="${p.id}" ${buy ? "" : "disabled"}>
-                  ${ICON.bag} Add to Cart
+                  ${buy ? `${ICON.bag} Add to Cart` : "Out of Stock"}
                 </button>
                 <button class="btn btn-line" data-act="buy" data-q="${qid}" data-pid="${p.id}" ${buy ? "" : "disabled"}>
-                  Buy Now
+                  ${buy ? "Buy Now" : "Unavailable"}
                 </button>
               </div>
               <div class="info-box">
@@ -456,7 +465,9 @@ views.product = (slug) => {
       </section>
       <div class="mbar">
         <div><b>${priceTxt(p)}</b><small>${p.netWeight} · Delivery ${money(D.fee)}</small></div>
-        <button class="btn btn-gold btn-sm" data-act="add" data-q="${qid}" data-pid="${p.id}" ${buy ? "" : "disabled"}>Add to Cart</button>
+        <button class="btn btn-gold btn-sm" data-act="add" data-q="${qid}" data-pid="${p.id}" ${buy ? "" : "disabled"}>
+          ${buy ? "Add to Cart" : "Out of Stock"}
+        </button>
       </div>
     `,
     mbar: true

@@ -494,6 +494,16 @@ document.addEventListener("submit", e => {
 
 window.addEventListener("hashchange", route);
 
+// Live Cross-Tab Synchronization with Admin Portal
+window.addEventListener("storage", (e) => {
+  if (e.key === "app_products" || e.key === "app_active_theme" || e.key === "app_custom_theme_tokens") {
+    if (typeof initTheme === "function") initTheme();
+    if (typeof getProducts === "function") getProducts();
+    if (typeof shell === "function") shell();
+    if (typeof route === "function") route();
+  }
+});
+
 // Application Bootstrap
 function initApp() {
   initTheme();
