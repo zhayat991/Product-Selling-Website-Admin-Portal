@@ -375,6 +375,69 @@ body.admin-body {
   background: rgba(214, 167, 54, 0.1);
 }
 
+/* Admin Form Labels & Inputs System */
+.admin-body label,
+.dlg label {
+  color: var(--gold-hi) !important;
+  font-size: 13.5px;
+  font-weight: 600;
+  letter-spacing: 0.015em;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.admin-body label .req,
+.dlg label .req {
+  color: #ef4444 !important;
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.admin-body label .hint,
+.dlg label .hint {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--mute-dark) !important;
+}
+
+.admin-body input:not([type="checkbox"]):not([type="radio"]):not([type="color"]),
+.admin-body select,
+.admin-body textarea,
+.dlg input:not([type="checkbox"]):not([type="radio"]):not([type="color"]),
+.dlg select,
+.dlg textarea {
+  width: 100%;
+  background: #14100a !important;
+  border: 1.5px solid rgba(214, 167, 54, 0.35) !important;
+  color: #fffdf8 !important;
+  border-radius: var(--r-sm);
+  padding: 12px 14px;
+  font-size: 14.5px;
+  box-sizing: border-box;
+  transition: all 0.2s ease;
+}
+
+.admin-body input:focus,
+.admin-body select:focus,
+.admin-body textarea:focus,
+.dlg input:focus,
+.dlg select:focus,
+.dlg textarea:focus {
+  background: #1c160e !important;
+  border-color: var(--gold) !important;
+  box-shadow: 0 0 0 3px rgba(214, 167, 54, 0.25) !important;
+  outline: none;
+}
+
+.admin-body input::placeholder,
+.admin-body textarea::placeholder,
+.dlg input::placeholder,
+.dlg textarea::placeholder {
+  color: rgba(189, 174, 142, 0.5) !important;
+}
+
 /* White-Label Customizer Form */
 .customizer-layout {
   display: grid;

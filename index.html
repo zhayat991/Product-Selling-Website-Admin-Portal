@@ -13,9 +13,28 @@
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Jost:wght@400;500;600;700&display=swap" rel="stylesheet">
 
   <!-- Design System & Component Styles -->
-  <link rel="stylesheet" href="styles/theme.css">
-  <link rel="stylesheet" href="styles/ui-kit.css">
-  <link rel="stylesheet" href="styles/storefront.css">
+  <link rel="stylesheet" href="styles/theme.css?v=2">
+  <link rel="stylesheet" href="styles/ui-kit.css?v=2">
+  <link rel="stylesheet" href="styles/storefront.css?v=2">
+  <style>
+    .pgrid {
+      display: grid !important;
+      grid-template-columns: repeat(3, 1fr) !important;
+      gap: 24px !important;
+      align-items: stretch !important;
+    }
+    @media (max-width: 1040px) {
+      .pgrid { grid-template-columns: repeat(2, 1fr) !important; }
+    }
+    @media (max-width: 720px) {
+      .pgrid { grid-template-columns: 1fr !important; }
+    }
+    .pc-img img {
+      height: min(34vh, 290px) !important;
+      width: auto !important;
+      max-width: 100% !important;
+    }
+  </style>
 </head>
 <body>
   <!-- Accessibility Skip Link -->
@@ -35,13 +54,13 @@
   <div id="toast" role="status" aria-live="polite"></div>
 
   <!-- White-Label Configuration & Data -->
-  <script src="config/brand.config.js"></script>
-  <script src="config/theme.config.js"></script>
-  <script src="data/products.js"></script>
+  <script src="config/brand.config.js?v=2"></script>
+  <script src="config/theme.config.js?v=2"></script>
+  <script src="data/products.js?v=2"></script>
 
   <!-- Core Logic, Router & Application Runtime -->
-  <script src="js/store.js"></script>
-  <script src="js/router.js"></script>
-  <script src="js/app.js"></script>
+  <script src="js/store.js?v=2"></script>
+  <script src="js/router.js?v=2"></script>
+  <script src="js/app.js?v=2"></script>
 </body>
 </html>

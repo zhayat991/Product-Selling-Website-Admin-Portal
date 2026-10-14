@@ -1498,11 +1498,11 @@
   transform: none;
 }
 
-/* Product Grid */
+/* Product Grid - 3 items in one row on desktop */
 .pgrid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 28px;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
   align-items: stretch;
 }
 
@@ -1526,20 +1526,20 @@
   position: relative;
   display: grid;
   place-items: center;
-  padding: 44px 20px 28px;
+  padding: 36px 16px 22px;
   background: radial-gradient(58% 58% at 50% 50%, rgba(233, 162, 28, 0.34), transparent 72%);
 }
 
 .pc-img img {
-  height: min(46vh, 400px);
+  height: min(34vh, 290px);
   width: auto;
   max-width: 100%;
-  filter: drop-shadow(0 26px 26px rgba(0, 0, 0, 0.7));
+  filter: drop-shadow(0 20px 20px rgba(0, 0, 0, 0.7));
   transition: transform 0.6s ease;
 }
 
 .pc:hover .pc-img img {
-  transform: scale(1.03);
+  transform: scale(1.04);
 }
 
 .pc-size {
@@ -1660,6 +1660,7 @@
   .hdr-r { margin-left: auto; }
   .grid4 { grid-template-columns: repeat(2, 1fr); }
   .ftr-grid { grid-template-columns: 1fr 1fr; }
+  .pgrid { grid-template-columns: repeat(2, 1fr); }
 }
 
 @media (max-width: 860px) {

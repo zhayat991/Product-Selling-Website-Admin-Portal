@@ -246,6 +246,35 @@ svg.i {
   font-style: normal;
 }
 
+/* High-Contrast Labels & Sleek Inputs in Dialogs & Admin Context */
+.dlg .f label,
+dialog .f label,
+.admin-body .f label {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--gold-hi);
+  letter-spacing: 0.015em;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.dlg .f label .req,
+dialog .f label .req,
+.admin-body .f label .req {
+  color: #ef4444;
+  font-weight: 700;
+}
+
+.dlg .f label .hint,
+dialog .f label .hint,
+.admin-body .f label .hint {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--mute-dark);
+}
+
 .f input,
 .f textarea,
 .f select {
@@ -260,12 +289,50 @@ svg.i {
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
+.dlg .f input,
+.dlg .f textarea,
+.dlg .f select,
+dialog .f input,
+dialog .f textarea,
+dialog .f select,
+.admin-body .f input,
+.admin-body .f textarea,
+.admin-body .f select {
+  background: #14100a;
+  border: 1.5px solid rgba(214, 167, 54, 0.35);
+  color: #fffdf8;
+  font-size: 14.5px;
+}
+
+.dlg .f input::placeholder,
+.dlg .f textarea::placeholder,
+dialog .f input::placeholder,
+dialog .f textarea::placeholder,
+.admin-body .f input::placeholder,
+.admin-body .f textarea::placeholder {
+  color: rgba(189, 174, 142, 0.55);
+}
+
 .f input:focus,
 .f textarea:focus,
 .f select:focus {
   outline: none;
   border-color: var(--gold);
   box-shadow: 0 0 0 3px rgba(214, 167, 54, 0.2);
+}
+
+.dlg .f input:focus,
+.dlg .f textarea:focus,
+.dlg .f select:focus,
+dialog .f input:focus,
+dialog .f textarea:focus,
+dialog .f select:focus,
+.admin-body .f input:focus,
+.admin-body .f textarea:focus,
+.admin-body .f select:focus {
+  background: #1c160e;
+  border-color: var(--gold);
+  box-shadow: 0 0 0 3px rgba(214, 167, 54, 0.25);
 }
 
 .f textarea {

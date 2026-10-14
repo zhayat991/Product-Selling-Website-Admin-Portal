@@ -419,6 +419,13 @@ function openAddProductModal() {
 
   modal.innerHTML = `
     <div class="dlg" style="width:min(720px,94vw)">
+      <style>
+        #dlg-product-modal label { color: #f4d77f !important; font-size: 13.5px !important; font-weight: 600 !important; margin-bottom: 6px !important; display: flex !important; align-items: center !important; gap: 6px !important; }
+        #dlg-product-modal input, #dlg-product-modal select, #dlg-product-modal textarea { background: #14100a !important; color: #fffdf8 !important; border: 1.5px solid rgba(214, 167, 54, 0.35) !important; padding: 12px 14px !important; border-radius: 8px !important; width: 100% !important; box-sizing: border-box !important; }
+        #dlg-product-modal input::placeholder, #dlg-product-modal textarea::placeholder { color: rgba(189, 174, 142, 0.55) !important; }
+        #dlg-product-modal .req { color: #ef4444 !important; font-weight: 700 !important; }
+        #dlg-product-modal .hint { color: #bdae8e !important; font-size: 11.5px !important; font-weight: normal !important; }
+      </style>
       <button class="ic dlg-x" onclick="document.getElementById('dlg-product-modal').close()">${ICON.x}</button>
       <h3 style="font-size:22px;margin-bottom:6px">Add New Product</h3>
       <p style="font-size:14px;color:var(--mute-dark);margin-bottom:20px">Create a new item in your store catalog with images, pricing, and initial stock.</p>
@@ -426,43 +433,43 @@ function openAddProductModal() {
       <form id="productForm" onsubmit="event.preventDefault(); saveProductForm(null);">
         <div class="fgrid">
           <div class="f full">
-            <label for="prodTitle">Product Title / Name *</label>
+            <label for="prodTitle">Product Title / Name <span class="req">*</span></label>
             <input id="prodTitle" placeholder="e.g. Pure Honey Walnut Crunch" required>
           </div>
 
           <div class="f">
-            <label for="prodWeight">Weight / Size *</label>
-            <input id="prodWeight" placeholder="e.g. 500g, 1kg, 250g" required>
+            <label for="prodWeight">Weight / Size / Pack <span class="req">*</span></label>
+            <input id="prodWeight" placeholder="e.g. 500g, 1kg, 250g Jar" required>
           </div>
 
           <div class="f">
-            <label for="prodBadge">Product Badge</label>
+            <label for="prodBadge">Product Badge <span class="hint">(Optional - e.g. Best Seller, Organic, New)</span></label>
             <input id="prodBadge" placeholder="e.g. Best Seller, New, Organic">
           </div>
 
           <div class="f">
-            <label for="prodPrice">Selling Price (PKR) *</label>
+            <label for="prodPrice">Selling Price (PKR) <span class="req">*</span></label>
             <input id="prodPrice" type="number" min="1" placeholder="1599" required>
           </div>
 
           <div class="f">
-            <label for="prodComparePrice">Original / Compare Price (PKR)</label>
+            <label for="prodComparePrice">Original / Compare Price (PKR) <span class="hint">(Optional discount anchor)</span></label>
             <input id="prodComparePrice" type="number" min="0" placeholder="1850">
           </div>
 
           <div class="f">
-            <label for="prodStock">Initial Stock Units *</label>
+            <label for="prodStock">Initial Stock Units <span class="req">*</span></label>
             <input id="prodStock" type="number" min="0" value="50" required>
           </div>
 
           <div class="f">
-            <label for="prodCategory">Category / Group</label>
+            <label for="prodCategory">Category / Group <span class="hint">(e.g. honey-nut-mix)</span></label>
             <input id="prodCategory" placeholder="e.g. honey-nut-mix">
           </div>
 
           <!-- Featured Image Section -->
           <div class="f full" style="margin-top:10px">
-            <label>Featured Image Upload & Preview *</label>
+            <label>Featured Image Upload & Preview <span class="req">*</span></label>
             <div class="dropzone-box" onclick="document.getElementById('prodImgFileInput').click()">
               <input type="file" id="prodImgFileInput" accept="image/*" style="display:none" onchange="handleProductImageUpload(event)">
               <p style="margin:0;font-size:14.5px;color:var(--gold-hi)"><b>Click or Drop to Upload Image File</b></p>
@@ -470,7 +477,7 @@ function openAddProductModal() {
             </div>
 
             <div style="margin-top:12px">
-              <label for="prodImgUrlInput" style="font-size:13px;color:var(--mute-dark)">Or Enter Image URL / Asset Path</label>
+              <label for="prodImgUrlInput" style="font-size:13px;color:var(--gold-hi)">Or Enter Image URL / Asset Path</label>
               <input id="prodImgUrlInput" placeholder="assets/images/products/front.webp or https://..." oninput="previewImageFromUrl(this.value)">
             </div>
 
@@ -489,12 +496,12 @@ function openAddProductModal() {
           </div>
 
           <div class="f full">
-            <label for="prodShortDesc">Short Summary / Subtitle</label>
+            <label for="prodShortDesc">Short Summary / Subtitle <span class="hint">(Shown on product cards)</span></label>
             <input id="prodShortDesc" placeholder="Brief 1-line hook displayed on product cards">
           </div>
 
           <div class="f full">
-            <label for="prodFullDesc">Full Detailed Description</label>
+            <label for="prodFullDesc">Full Detailed Description <span class="hint">(Health benefits, ingredients, taste)</span></label>
             <textarea id="prodFullDesc" placeholder="Describe the health benefits, taste profile, and packaging..." rows="3"></textarea>
           </div>
         </div>
@@ -524,6 +531,13 @@ function openEditProductModal(productId) {
 
   modal.innerHTML = `
     <div class="dlg" style="width:min(720px,94vw)">
+      <style>
+        #dlg-product-modal label { color: #f4d77f !important; font-size: 13.5px !important; font-weight: 600 !important; margin-bottom: 6px !important; display: flex !important; align-items: center !important; gap: 6px !important; }
+        #dlg-product-modal input, #dlg-product-modal select, #dlg-product-modal textarea { background: #14100a !important; color: #fffdf8 !important; border: 1.5px solid rgba(214, 167, 54, 0.35) !important; padding: 12px 14px !important; border-radius: 8px !important; width: 100% !important; box-sizing: border-box !important; }
+        #dlg-product-modal input::placeholder, #dlg-product-modal textarea::placeholder { color: rgba(189, 174, 142, 0.55) !important; }
+        #dlg-product-modal .req { color: #ef4444 !important; font-weight: 700 !important; }
+        #dlg-product-modal .hint { color: #bdae8e !important; font-size: 11.5px !important; font-weight: normal !important; }
+      </style>
       <button class="ic dlg-x" onclick="document.getElementById('dlg-product-modal').close()">${ICON.x}</button>
       <h3 style="font-size:22px;margin-bottom:6px">Edit Product: ${esc(p.title || p.name)}</h3>
       <p style="font-size:14px;color:var(--mute-dark);margin-bottom:20px">Update pricing, description, stock units, or product photography.</p>
@@ -531,43 +545,43 @@ function openEditProductModal(productId) {
       <form id="productForm" onsubmit="event.preventDefault(); saveProductForm('${p.id}');">
         <div class="fgrid">
           <div class="f full">
-            <label for="prodTitle">Product Title / Name *</label>
+            <label for="prodTitle">Product Title / Name <span class="req">*</span></label>
             <input id="prodTitle" value="${esc(p.title || p.name)}" required>
           </div>
 
           <div class="f">
-            <label for="prodWeight">Weight / Size *</label>
+            <label for="prodWeight">Weight / Size / Pack <span class="req">*</span></label>
             <input id="prodWeight" value="${esc(p.weight || '500g')}" required>
           </div>
 
           <div class="f">
-            <label for="prodBadge">Product Badge</label>
+            <label for="prodBadge">Product Badge <span class="hint">(Optional - e.g. Best Seller, Organic, New)</span></label>
             <input id="prodBadge" value="${esc(p.badge || '')}">
           </div>
 
           <div class="f">
-            <label for="prodPrice">Selling Price (PKR) *</label>
+            <label for="prodPrice">Selling Price (PKR) <span class="req">*</span></label>
             <input id="prodPrice" type="number" min="1" value="${p.price || ''}" required>
           </div>
 
           <div class="f">
-            <label for="prodComparePrice">Original / Compare Price (PKR)</label>
+            <label for="prodComparePrice">Original / Compare Price (PKR) <span class="hint">(Optional discount anchor)</span></label>
             <input id="prodComparePrice" type="number" min="0" value="${p.comparePrice || ''}">
           </div>
 
           <div class="f">
-            <label for="prodStock">Current Stock Units *</label>
+            <label for="prodStock">Current Stock Units <span class="req">*</span></label>
             <input id="prodStock" type="number" min="0" value="${p.stock !== undefined ? p.stock : 25}" required>
           </div>
 
           <div class="f">
-            <label for="prodCategory">Category / Group</label>
+            <label for="prodCategory">Category / Group <span class="hint">(e.g. honey-nut-mix)</span></label>
             <input id="prodCategory" value="${esc(p.group || 'honey-nut-mix')}">
           </div>
 
           <!-- Featured Image Section -->
           <div class="f full" style="margin-top:10px">
-            <label>Featured Image Upload & Preview *</label>
+            <label>Featured Image Upload & Preview <span class="req">*</span></label>
             <div class="dropzone-box" onclick="document.getElementById('prodImgFileInput').click()">
               <input type="file" id="prodImgFileInput" accept="image/*" style="display:none" onchange="handleProductImageUpload(event)">
               <p style="margin:0;font-size:14.5px;color:var(--gold-hi)"><b>Click or Drop to Upload New Image</b></p>
@@ -575,7 +589,7 @@ function openEditProductModal(productId) {
             </div>
 
             <div style="margin-top:12px">
-              <label for="prodImgUrlInput" style="font-size:13px;color:var(--mute-dark)">Or Edit Image URL Path</label>
+              <label for="prodImgUrlInput" style="font-size:13px;color:var(--gold-hi)">Or Edit Image URL Path</label>
               <input id="prodImgUrlInput" value="${currentImg}" oninput="previewImageFromUrl(this.value)">
             </div>
 
@@ -594,12 +608,12 @@ function openEditProductModal(productId) {
           </div>
 
           <div class="f full">
-            <label for="prodShortDesc">Short Summary / Subtitle</label>
+            <label for="prodShortDesc">Short Summary / Subtitle <span class="hint">(Shown on product cards)</span></label>
             <input id="prodShortDesc" value="${esc(p.shortDesc || p.subtitle || '')}">
           </div>
 
           <div class="f full">
-            <label for="prodFullDesc">Full Detailed Description</label>
+            <label for="prodFullDesc">Full Detailed Description <span class="hint">(Health benefits, ingredients, taste)</span></label>
             <textarea id="prodFullDesc" rows="3">${esc(p.fullDesc || '')}</textarea>
           </div>
         </div>
@@ -758,22 +772,81 @@ function markOutOfStock(productId) {
   renderProductsGrid();
 }
 
-// Restock Product
+// Open Dedicated Restock Modal
 function restockProduct(productId) {
   const allProducts = (typeof getProducts === "function") ? getProducts() : (window.PRODUCTS || []);
   const target = allProducts.find(p => p.id === productId);
   if (!target) return;
 
   const current = target.stock || 0;
-  const qtyStr = prompt(`Enter restock units to add for "${target.title || target.name}":`, "25");
-  if (qtyStr === null) return;
-  const qty = parseInt(qtyStr);
+  let modal = $("#dlg-restock-modal");
+  if (!modal) {
+    modal = document.createElement("dialog");
+    modal.id = "dlg-restock-modal";
+    modal.setAttribute("aria-label", "Restock Product");
+    document.body.appendChild(modal);
+  }
+
+  modal.innerHTML = `
+    <div class="dlg" style="width:min(480px,94vw)">
+      <style>
+        #dlg-restock-modal label { color: #f4d77f !important; font-size: 13.5px !important; font-weight: 600 !important; margin-bottom: 6px !important; display: flex !important; }
+        #dlg-restock-modal input { background: #14100a !important; color: #f4d77f !important; border: 1.5px solid rgba(214, 167, 54, 0.35) !important; padding: 12px 14px !important; border-radius: 8px !important; width: 100% !important; box-sizing: border-box !important; }
+      </style>
+      <button class="ic dlg-x" onclick="document.getElementById('dlg-restock-modal').close()">${ICON.x}</button>
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:14px">
+        <div style="width:44px;height:44px;border-radius:var(--r-sm);background:rgba(16,185,129,0.15);color:#34d399;display:grid;place-items:center;font-size:22px">📦</div>
+        <div>
+          <h3 style="font-size:20px;margin:0">Restock Product</h3>
+          <p style="font-size:13.5px;color:var(--mute-dark);margin:2px 0 0">${esc(target.title || target.name)} (${esc(target.weight || '')})</p>
+        </div>
+      </div>
+
+      <div style="background:rgba(255,255,255,0.03);border:1px solid var(--hair);border-radius:var(--r-sm);padding:14px 16px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:14px;color:var(--mute-dark)">Current Inventory Status:</span>
+        <span class="tag tag-${current > 0 ? 'emerald' : 'rose'}">${current > 0 ? `In Stock (${current} units)` : 'Out of Stock (0 units)'}</span>
+      </div>
+
+      <form onsubmit="event.preventDefault(); applyRestock('${target.id}', parseInt(document.getElementById('restockQtyInput').value));">
+        <div class="f">
+          <label for="restockQtyInput">Units to Add into Inventory:</label>
+          <input type="number" id="restockQtyInput" min="1" max="9999" value="25" required style="font-size:20px;font-weight:700;text-align:center;color:var(--gold-hi)">
+        </div>
+
+        <div style="margin-top:14px">
+          <span style="font-size:12.5px;color:var(--mute-dark)">1-Click Quick Add:</span>
+          <div class="preset-img-chips" style="margin-top:6px">
+            <span class="preset-chip" onclick="applyRestock('${target.id}', 10)">+10 Units</span>
+            <span class="preset-chip active" onclick="applyRestock('${target.id}', 25)">+25 (Standard)</span>
+            <span class="preset-chip" onclick="applyRestock('${target.id}', 50)">+50 (Bulk)</span>
+            <span class="preset-chip" onclick="applyRestock('${target.id}', 100)">+100 (Carton)</span>
+          </div>
+        </div>
+
+        <div style="display:flex;justify-content:flex-end;gap:12px;margin-top:24px">
+          <button type="button" class="btn btn-line btn-sm" onclick="document.getElementById('dlg-restock-modal').close()">Cancel</button>
+          <button type="submit" class="btn btn-gold btn-sm">Confirm Restock</button>
+        </div>
+      </form>
+    </div>
+  `;
+
+  modal.showModal();
+}
+
+function applyRestock(productId, qty) {
   if (isNaN(qty) || qty <= 0) {
     alert("Please enter a valid positive quantity.");
     return;
   }
 
+  const allProducts = (typeof getProducts === "function") ? getProducts() : (window.PRODUCTS || []);
+  const target = allProducts.find(p => p.id === productId);
+  if (!target) return;
+
+  const current = target.stock || 0;
   target.stock = current + qty;
+
   if (typeof saveProducts === "function") {
     saveProducts(allProducts);
   } else {
@@ -781,9 +854,21 @@ function restockProduct(productId) {
     window.PRODUCTS = allProducts;
   }
 
+  const modal = $("#dlg-restock-modal");
+  if (modal) modal.close();
+
   toast(`"${target.title || target.name}" restocked with +${qty} units!`);
   renderProductsGrid();
+  if (typeof renderDashboard === "function") renderDashboard();
 }
+
+// Global window exposure for inline onclick handlers
+window.restockProduct = restockProduct;
+window.applyRestock = applyRestock;
+window.markOutOfStock = markOutOfStock;
+window.openAddProductModal = openAddProductModal;
+window.openEditProductModal = openEditProductModal;
+window.deleteProduct = deleteProduct;
 
 // Delete Product
 function deleteProduct(productId) {
