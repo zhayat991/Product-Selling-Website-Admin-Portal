@@ -11,37 +11,11 @@
 
 const PRODUCTS = [
   {
-    id: "msr-250",
-    slug: "honey-nut-mix-250g",
-    group: "honey-nut-mix",
-    name: "MSR Honey Nut Mix",
-    title: "HONEY NUT MIX (Snack Jar)",
-    subtitle: "Compact Daily Energy Jar for Travel & Deskside Snacking",
-    weight: "250g",
-    netWeight: "250g",
-    price: 999,
-    comparePrice: 1199,
-    stock: 60,
-    featured: true,
-    badge: "New Arrival",
-    maxQty: 20,
-    img: {
-      front: "assets/images/products/front.webp",
-      back: "assets/images/products/back.webp",
-      pair: "assets/images/products/pair.webp"
-    },
-    shortDesc: "The perfect travel-friendly introduction to our artisanal honey and nut blend in a 250g jar.",
-    fullDesc: "Designed for deskside snacking, gym bags, and healthy gifting. Fresh roasted almonds, crunchy walnuts, cashews, pistachios, and peanuts enveloped in pure golden mountain honey.",
-    packaging: "Pocket-sized airtight luxury glass jar with hygiene seal",
-    shelfLife: "12 months from packing date",
-    note: ""
-  },
-  {
     id: "msr-500",
     slug: "honey-nut-mix-500g",
     group: "honey-nut-mix",
     name: "MSR Honey Nut Mix",
-    title: "HONEY NUT MIX (Signature)",
+    title: "HONEY NUT MIX (500g)",
     subtitle: "Artisanal Roasted Dry Fruits Drenched in Raw Mountain Honey",
     weight: "500g",
     netWeight: "500g",
@@ -49,7 +23,7 @@ const PRODUCTS = [
     comparePrice: 1850,
     stock: 45,
     featured: true,
-    badge: "Best Seller",
+    badge: "Most Popular",
     maxQty: 20,
     img: {
       front: "assets/images/products/front.webp",
@@ -67,7 +41,7 @@ const PRODUCTS = [
     slug: "honey-nut-mix-1kg",
     group: "honey-nut-mix",
     name: "MSR Honey Nut Mix",
-    title: "HONEY NUT MIX (Family Pack)",
+    title: "HONEY NUT MIX (1kg Family Pack)",
     subtitle: "Value Family Jar for Daily Immunity & Natural Energy",
     weight: "1kg",
     netWeight: "1kg (1000g)",
@@ -86,7 +60,34 @@ const PRODUCTS = [
     fullDesc: "Double the goodness for the entire household. Packed with essential micronutrients, healthy unsaturated fats, minerals, and natural slow-burning energy. Ideal for sharing with family or stocking your pantry for the month.",
     packaging: "Heavyweight pantry jar with double seal protection",
     shelfLife: "12 months from packing date",
-    note: "Photo shows the signature jar. 1kg jar packed in the same luxury packaging."
+    note: "Photo shows signature jar style. 1kg jar packed in the same luxury double-seal packaging."
+  },
+  {
+    id: "msr-250",
+    slug: "honey-nut-mix-250g",
+    group: "honey-nut-mix",
+    name: "MSR Honey Nut Mix",
+    title: "HONEY NUT MIX (250g Starter Jar)",
+    subtitle: "Compact Snacking Jar · Perfect Daily Portion & Trial Size",
+    weight: "250g",
+    netWeight: "250g",
+    price: 899,
+    comparePrice: 1099,
+    stock: 60,
+    featured: true,
+    prominent: true,
+    badge: "✨ New Starter Size",
+    maxQty: 20,
+    img: {
+      front: "assets/images/products/front.webp",
+      back: "assets/images/products/back.webp",
+      pair: "assets/images/products/pair.webp"
+    },
+    shortDesc: "The perfect introduction to pure honey-roasted nuts. Convenient compact jar for desk snacking or travel.",
+    fullDesc: "The brand new 250g edition gives you the exact same gold-standard recipe of whole California almonds, Kashmiri walnuts, roasted cashews, Iranian pistachios, and peanuts drenched in raw mountain honey in an ultra-portable, convenient personal jar.",
+    packaging: "Compact airtight jar with tamper-proof seal",
+    shelfLife: "12 months from packing date",
+    note: "✨ New arrival: perfect personal trial size for healthy desk or gym snacking."
   }
 ];
 

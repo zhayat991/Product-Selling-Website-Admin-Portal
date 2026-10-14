@@ -523,12 +523,33 @@
 .pill {
   display: inline-flex;
   align-items: center;
-  padding: 5px 14px;
-  border: 1px solid var(--gold);
+  padding: 6px 16px;
   border-radius: var(--r-full);
+  font-weight: 600;
+  font-size: 13.5px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  transition: all 0.25s ease;
+}
+
+/* Default / Dark Backgrounds */
+.pill,
+.sec-black .pill,
+.sec-coal .pill,
+.show .pill,
+.pc-img .pill {
+  background: rgba(214, 167, 54, 0.12);
+  border: 1px solid var(--gold);
   color: var(--gold-hi);
-  font-weight: 500;
-  font-size: 14.5px;
+}
+
+/* High-Contrast Pill Badges on Light Backgrounds (Artisanal Excellence, The Standard, Lifestyle & Nutrition, Customer Love) */
+.sec-sand .pill,
+.sec-cream .pill {
+  background: #140f08;
+  color: #f4d77f;
+  border: 1.5px solid var(--gold);
+  box-shadow: 0 4px 14px rgba(20, 15, 8, 0.16);
 }
 
 .pcard-body p {
@@ -1506,6 +1527,12 @@
   align-items: stretch;
 }
 
+@media (max-width: 860px) {
+  .pgrid {
+    grid-template-columns: 1fr;
+  }
+}
+
 .pc {
   display: flex;
   flex-direction: column;
@@ -1514,7 +1541,8 @@
   background: linear-gradient(165deg, #1a1409, #0a0805 62%);
   border: 1px solid var(--hair);
   box-shadow: var(--shadow-deep);
-  transition: border-color 0.35s ease, transform 0.35s ease;
+  transition: border-color 0.35s ease, transform 0.35s ease, box-shadow 0.35s ease;
+  position: relative;
 }
 
 .pc:hover {
@@ -1522,16 +1550,45 @@
   transform: translateY(-4px);
 }
 
+.pc.pc-prominent {
+  border: 1.5px solid var(--gold);
+  background: linear-gradient(165deg, #22190c, #0a0805 65%);
+  box-shadow: 0 16px 40px -10px rgba(214, 167, 54, 0.35);
+}
+
+.pc.pc-prominent:hover {
+  box-shadow: 0 22px 48px -8px rgba(214, 167, 54, 0.45);
+  border-color: var(--gold-hi);
+}
+
+.pc.pc-prominent::before {
+  content: "✨ NEW · STARTER PACK";
+  position: absolute;
+  top: 14px;
+  right: 16px;
+  background: linear-gradient(135deg, #f4d77f, #d6a736);
+  color: #120e06;
+  font-family: var(--sans);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  border-radius: 20px;
+  box-shadow: 0 4px 12px rgba(214, 167, 54, 0.4);
+  z-index: 2;
+}
+
 .pc-img {
   position: relative;
   display: grid;
   place-items: center;
-  padding: 44px 20px 28px;
+  padding: 40px 18px 24px;
   background: radial-gradient(58% 58% at 50% 50%, rgba(233, 162, 28, 0.34), transparent 72%);
 }
 
 .pc-img img {
-  height: min(46vh, 400px);
+  height: min(44vh, 390px);
   width: auto;
   max-width: 100%;
   filter: drop-shadow(0 26px 26px rgba(0, 0, 0, 0.7));
@@ -1540,6 +1597,19 @@
 
 .pc:hover .pc-img img {
   transform: scale(1.03);
+}
+
+.pc .buy-row {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+}
+
+.pc .buy-row .btn {
+  flex: 1;
+  text-align: center;
+  justify-content: center;
+  white-space: nowrap;
 }
 
 .pc-size {
@@ -1736,4 +1806,154 @@
   }
   .reveal { opacity: 1; transform: none; }
   .hero-art .ring circle { stroke-dashoffset: 0; }
+}
+
+/* =======================================================================
+   ORDER TRACKING & LIFECYCLE STEPPER STYLES
+   ======================================================================= */
+.track-card {
+  background: var(--bg-card);
+  border: 1px solid var(--hair);
+  border-radius: var(--r-lg);
+  padding: 32px;
+  box-shadow: var(--shadow-deep);
+  margin-block: 28px;
+}
+
+.track-stepper {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  position: relative;
+  margin: 36px 0 44px;
+}
+
+.track-stepper::before {
+  content: "";
+  position: absolute;
+  top: 24px;
+  left: 40px;
+  right: 40px;
+  height: 3px;
+  background: rgba(214, 167, 54, 0.2);
+  z-index: 1;
+}
+
+.step-node {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  flex: 1;
+}
+
+.step-circle {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--bg-surface);
+  border: 2px solid var(--hair);
+  display: grid;
+  place-items: center;
+  font-size: 18px;
+  color: var(--mute-dark);
+  transition: all 0.3s ease;
+}
+
+.step-node.completed .step-circle {
+  background: rgba(16, 185, 129, 0.2);
+  border-color: #10b981;
+  color: #34d399;
+}
+
+.step-node.active .step-circle {
+  background: var(--gold-grad);
+  border-color: var(--gold-hi);
+  color: #14100a;
+  box-shadow: 0 0 18px var(--accent-glow);
+  transform: scale(1.1);
+}
+
+.step-label {
+  margin-top: 10px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--mute-dark);
+}
+
+.step-node.completed .step-label,
+.step-node.active .step-label {
+  color: var(--cream);
+}
+
+.step-time {
+  font-size: 11.5px;
+  color: var(--mute-dark);
+  margin-top: 2px;
+}
+
+.track-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 24px;
+  border-left: 2px solid rgba(214, 167, 54, 0.25);
+  padding-left: 24px;
+  margin-left: 12px;
+}
+
+.timeline-item {
+  position: relative;
+}
+
+.timeline-item::before {
+  content: "";
+  position: absolute;
+  left: -31px;
+  top: 4px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--gold);
+  box-shadow: 0 0 8px rgba(214, 167, 54, 0.5);
+}
+
+.timeline-item h4 {
+  font-size: 15px;
+  margin: 0;
+  color: var(--cream);
+}
+
+.timeline-item small {
+  font-size: 12px;
+  color: var(--mute-dark);
+}
+
+.timeline-item p {
+  font-size: 13.5px;
+  color: var(--sand);
+  margin: 4px 0 0;
+}
+
+@media (max-width: 680px) {
+  .track-stepper {
+    flex-direction: column;
+    gap: 20px;
+    align-items: flex-start;
+    padding-left: 20px;
+  }
+  .track-stepper::before {
+    display: none;
+  }
+  .step-node {
+    flex-direction: row;
+    gap: 14px;
+    align-items: center;
+    text-align: left;
+  }
+  .step-label {
+    margin-top: 0;
+  }
 }
