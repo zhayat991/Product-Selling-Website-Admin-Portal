@@ -175,12 +175,28 @@
 
       <!-- TAB 3: PRODUCTS & INVENTORY -->
       <section class="tab-panel" id="tab-products">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:16px">
           <div>
             <h2 style="font-size:24px;margin:0">Product Catalog & Inventory</h2>
             <p style="color:var(--mute-dark);font-size:14px;margin-top:4px">Manage active store items, weights, and live pricing.</p>
           </div>
+          <button class="btn btn-gold btn-sm" onclick="openAddProductModal()">
+            + Add New Product
+          </button>
         </div>
+
+        <!-- Product Inventory Filters -->
+        <div class="filter-bar">
+          <div class="filter-pills" id="productFilterPills">
+            <span class="filter-pill active" data-prod-filter="all">All (<span id="countAllProds">0</span>)</span>
+            <span class="filter-pill" data-prod-filter="instock">In Stock (<span id="countInStock">0</span>)</span>
+            <span class="filter-pill" data-prod-filter="outofstock">Out of Stock (<span id="countOutOfStock">0</span>)</span>
+          </div>
+          <div class="f" style="width:280px">
+            <input type="search" id="productSearchInput" placeholder="Search products by title, size...">
+          </div>
+        </div>
+
         <div class="inventory-grid" id="inventoryGridContainer"></div>
       </section>
 
@@ -294,6 +310,9 @@
 
   <!-- Order Details Dialog -->
   <dialog id="dlg-order-details" aria-label="Order Details"></dialog>
+
+  <!-- Product Add / Edit Modal -->
+  <dialog id="dlg-product-modal" aria-label="Product Editor"></dialog>
 
   <!-- Export Config Dialog -->
   <dialog id="dlg-export-config" aria-label="Export Brand Configuration"></dialog>

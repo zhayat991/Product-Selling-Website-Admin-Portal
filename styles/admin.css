@@ -451,20 +451,51 @@ body.admin-body {
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  position: relative;
+  transition: transform 0.25s ease, border-color 0.25s ease;
+}
+
+.inventory-card:hover {
+  transform: translateY(-3px);
+  border-color: rgba(214, 167, 54, 0.45);
+}
+
+.inventory-card.out-of-stock {
+  border-color: rgba(239, 68, 68, 0.35);
 }
 
 .inventory-card-img {
-  height: 180px;
+  height: 200px;
   background: #000;
   display: grid;
   place-items: center;
   position: relative;
   padding: 16px;
+  overflow: hidden;
 }
 
 .inventory-card-img img {
-  max-height: 150px;
+  max-height: 165px;
   width: auto;
+  transition: transform 0.4s ease;
+}
+
+.inventory-card:hover .inventory-card-img img {
+  transform: scale(1.04);
+}
+
+.out-of-stock-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.72);
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+  font-size: 13.5px;
+  letter-spacing: 0.12em;
+  color: #fca5a5;
+  text-transform: uppercase;
+  z-index: 2;
 }
 
 .inventory-card-body {
@@ -473,6 +504,94 @@ body.admin-body {
   flex-direction: column;
   gap: 10px;
   flex: 1;
+}
+
+.prod-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.btn-danger {
+  border: 1.5px solid rgba(239, 68, 68, 0.4);
+  color: #fca5a5;
+  background: transparent;
+}
+.btn-danger:hover {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: #ef4444;
+  color: #fff;
+}
+
+.btn-warning {
+  border: 1.5px solid rgba(233, 162, 28, 0.4);
+  color: #fbbf24;
+  background: transparent;
+}
+.btn-warning:hover {
+  background: rgba(233, 162, 28, 0.15);
+  border-color: #e9a21c;
+}
+
+.btn-success {
+  border: 1.5px solid rgba(16, 185, 129, 0.4);
+  color: #6ee7b7;
+  background: transparent;
+}
+.btn-success:hover {
+  background: rgba(16, 185, 129, 0.15);
+  border-color: #10b981;
+}
+
+/* Image Upload Dropzone & Previews */
+.dropzone-box {
+  border: 2px dashed var(--hair);
+  border-radius: var(--r-sm);
+  padding: 20px;
+  text-align: center;
+  background: rgba(255, 255, 255, 0.02);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.dropzone-box:hover {
+  border-color: var(--gold);
+  background: rgba(214, 167, 54, 0.06);
+}
+
+.image-preview-thumb {
+  max-width: 120px;
+  max-height: 120px;
+  object-fit: contain;
+  background: #000;
+  border: 1px solid var(--hair);
+  border-radius: var(--r-sm);
+  margin-top: 10px;
+}
+
+.preset-img-chips {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
+.preset-chip {
+  padding: 6px 12px;
+  border-radius: var(--r-full);
+  border: 1px solid var(--hair);
+  background: rgba(255, 255, 255, 0.04);
+  font-size: 12.5px;
+  cursor: pointer;
+  color: var(--sand);
+  transition: all 0.2s;
+}
+
+.preset-chip:hover, .preset-chip.active {
+  border-color: var(--gold);
+  color: var(--gold-hi);
+  background: rgba(214, 167, 54, 0.12);
 }
 
 /* Filter Nav in Orders */

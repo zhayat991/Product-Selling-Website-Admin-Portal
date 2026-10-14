@@ -313,47 +313,497 @@ function openOrderModal(orderId) {
   modal.showModal();
 }
 
+// Product Catalog & Inventory State
+let currentProdFilter = "all";
+let tempUploadedImage = null;
+
 // Render Products & Inventory Grid
 function renderProductsGrid() {
   const container = $("#inventoryGridContainer");
   if (!container) return;
 
-  const products = window.PRODUCTS || [];
-  container.innerHTML = products.map(p => `
-    <div class="inventory-card">
-      <div class="inventory-card-img">
-        <span class="pill" style="position:absolute;top:12px;left:12px">${p.weight}</span>
-        <img src="${p.img.front}" alt="${p.name}">
+  const allProducts = (typeof getProducts === "function") ? getProducts() : (window.PRODUCTS || []);
+
+  // Update counts
+  const inStockCount = allProducts.filter(p => (p.stock == null || p.stock > 0)).length;
+  const outOfStockCount = allProducts.filter(p => p.stock !== undefined && p.stock <= 0).length;
+
+  if ($("#countAllProds")) $("#countAllProds").textContent = allProducts.length;
+  if ($("#countInStock")) $("#countInStock").textContent = inStockCount;
+  if ($("#countOutOfStock")) $("#countOutOfStock").textContent = outOfStockCount;
+
+  let filtered = allProducts;
+  if (currentProdFilter === "instock") {
+    filtered = allProducts.filter(p => p.stock == null || p.stock > 0);
+  } else if (currentProdFilter === "outofstock") {
+    filtered = allProducts.filter(p => p.stock !== undefined && p.stock <= 0);
+  }
+
+  const query = $("#productSearchInput") ? $("#productSearchInput").value.trim().toLowerCase() : "";
+  if (query) {
+    filtered = filtered.filter(p =>
+      (p.title || p.name || "").toLowerCase().includes(query) ||
+      (p.weight || "").toLowerCase().includes(query) ||
+      (p.shortDesc || "").toLowerCase().includes(query)
+    );
+  }
+
+  if (!filtered.length) {
+    container.innerHTML = `
+      <div style="grid-column: 1 / -1; text-align: center; padding: 48px; background: var(--bg-card); border: 1px solid var(--hair); border-radius: var(--r-md); color: var(--mute-dark);">
+        <p style="font-size: 16px; margin-bottom: 12px;">No products found matching your current filter.</p>
+        <button class="btn btn-gold btn-sm" onclick="openAddProductModal()">+ Add New Product</button>
       </div>
-      <div class="inventory-card-body">
-        <h3 style="font-size:18px;margin:0">${p.title}</h3>
-        <p style="font-size:14px;color:var(--mute-dark);margin:0">${p.shortDesc}</p>
-        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-top:auto;padding-top:12px;border-top:1px solid var(--hair)">
-          <div>
-            <b style="font-size:18px;color:var(--gold-hi)">${priceTxt(p)}</b>
-            ${p.comparePrice ? `<small style="text-decoration:line-through;color:var(--mute-dark);margin-left:6px">${money(p.comparePrice)}</small>` : ""}
+    `;
+    return;
+  }
+
+  container.innerHTML = filtered.map(p => {
+    const isOutOfStock = p.stock !== undefined && p.stock <= 0;
+    const stockQty = p.stock !== undefined ? p.stock : 25;
+    const stockPillClass = isOutOfStock ? "rose" : (stockQty <= 5 ? "amber" : "emerald");
+    const stockText = isOutOfStock ? "Out of Stock" : (stockQty <= 5 ? `Low Stock (${stockQty})` : `In Stock (${stockQty})`);
+    const imgSrc = (p.img && (p.img.front || p.img.pair)) || "assets/images/products/front.webp";
+
+    return `
+      <div class="inventory-card ${isOutOfStock ? 'out-of-stock' : ''}">
+        <div class="inventory-card-img">
+          <span class="pill" style="position:absolute;top:12px;left:12px;z-index:3">${esc(p.weight || "Standard")}</span>
+          ${p.badge ? `<span class="tag tag-gold" style="position:absolute;top:12px;right:12px;z-index:3">${esc(p.badge)}</span>` : ""}
+          ${isOutOfStock ? `<div class="out-of-stock-overlay">OUT OF STOCK</div>` : ""}
+          <img src="${imgSrc}" alt="${esc(p.name || p.title)}" loading="lazy">
+        </div>
+
+        <div class="inventory-card-body">
+          <h3 style="font-size:18px;margin:0;color:var(--cream)">${esc(p.title || p.name)}</h3>
+          <p style="font-size:13.5px;color:var(--mute-dark);margin:0;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${esc(p.shortDesc || p.subtitle || "")}</p>
+          
+          <div style="display:flex;justify-content:space-between;align-items:baseline;margin-top:auto;padding-top:12px;border-top:1px solid var(--hair)">
+            <div>
+              <b style="font-size:18px;color:var(--gold-hi)">${money(p.price)}</b>
+              ${p.comparePrice ? `<small style="text-decoration:line-through;color:var(--mute-dark);margin-left:6px">${money(p.comparePrice)}</small>` : ""}
+            </div>
+            <span class="tag tag-${stockPillClass}">
+              ${stockText}
+            </span>
           </div>
-          <span class="tag tag-${(p.stock || 20) > 10 ? 'emerald' : 'amber'}">
-            Stock: ${p.stock || 20}
-          </span>
-        </div>
-        <div style="display:flex;gap:8px;margin-top:14px">
-          <button class="btn btn-xs btn-line btn-block" onclick="promptEditPrice('${p.id}')">Edit Price</button>
+
+          <div class="prod-actions">
+            <button class="btn btn-xs btn-line" onclick="openEditProductModal('${p.id}')">
+              ✏️ Edit
+            </button>
+            ${isOutOfStock ? `
+              <button class="btn btn-xs btn-success" onclick="restockProduct('${p.id}')">
+                📦 Restock
+              </button>
+            ` : `
+              <button class="btn btn-xs btn-warning" onclick="markOutOfStock('${p.id}')">
+                ⚠️ Out of Stock
+              </button>
+            `}
+            <button class="btn btn-xs btn-danger" style="grid-column: 1 / -1" onclick="deleteProduct('${p.id}')">
+              🗑️ Remove Product
+            </button>
+          </div>
         </div>
       </div>
-    </div>
-  `).join("");
+    `;
+  }).join("");
 }
 
-function promptEditPrice(productId) {
-  const p = getP(productId);
+// Open Modal to Add New Product
+function openAddProductModal() {
+  tempUploadedImage = null;
+  const modal = $("#dlg-product-modal");
+  if (!modal) return;
+
+  modal.innerHTML = `
+    <div class="dlg" style="width:min(720px,94vw)">
+      <button class="ic dlg-x" onclick="document.getElementById('dlg-product-modal').close()">${ICON.x}</button>
+      <h3 style="font-size:22px;margin-bottom:6px">Add New Product</h3>
+      <p style="font-size:14px;color:var(--mute-dark);margin-bottom:20px">Create a new item in your store catalog with images, pricing, and initial stock.</p>
+
+      <form id="productForm" onsubmit="event.preventDefault(); saveProductForm(null);">
+        <div class="fgrid">
+          <div class="f full">
+            <label for="prodTitle">Product Title / Name *</label>
+            <input id="prodTitle" placeholder="e.g. Pure Honey Walnut Crunch" required>
+          </div>
+
+          <div class="f">
+            <label for="prodWeight">Weight / Size *</label>
+            <input id="prodWeight" placeholder="e.g. 500g, 1kg, 250g" required>
+          </div>
+
+          <div class="f">
+            <label for="prodBadge">Product Badge</label>
+            <input id="prodBadge" placeholder="e.g. Best Seller, New, Organic">
+          </div>
+
+          <div class="f">
+            <label for="prodPrice">Selling Price (PKR) *</label>
+            <input id="prodPrice" type="number" min="1" placeholder="1599" required>
+          </div>
+
+          <div class="f">
+            <label for="prodComparePrice">Original / Compare Price (PKR)</label>
+            <input id="prodComparePrice" type="number" min="0" placeholder="1850">
+          </div>
+
+          <div class="f">
+            <label for="prodStock">Initial Stock Units *</label>
+            <input id="prodStock" type="number" min="0" value="50" required>
+          </div>
+
+          <div class="f">
+            <label for="prodCategory">Category / Group</label>
+            <input id="prodCategory" placeholder="e.g. honey-nut-mix">
+          </div>
+
+          <!-- Featured Image Section -->
+          <div class="f full" style="margin-top:10px">
+            <label>Featured Image Upload & Preview *</label>
+            <div class="dropzone-box" onclick="document.getElementById('prodImgFileInput').click()">
+              <input type="file" id="prodImgFileInput" accept="image/*" style="display:none" onchange="handleProductImageUpload(event)">
+              <p style="margin:0;font-size:14.5px;color:var(--gold-hi)"><b>Click or Drop to Upload Image File</b></p>
+              <p style="margin-top:4px;font-size:12.5px;color:var(--mute-dark)">Supports PNG, WebP, JPG up to 5MB</p>
+            </div>
+
+            <div style="margin-top:12px">
+              <label for="prodImgUrlInput" style="font-size:13px;color:var(--mute-dark)">Or Enter Image URL / Asset Path</label>
+              <input id="prodImgUrlInput" placeholder="assets/images/products/front.webp or https://..." oninput="previewImageFromUrl(this.value)">
+            </div>
+
+            <div style="margin-top:10px">
+              <span style="font-size:12.5px;color:var(--mute-dark)">Quick Preset Jars:</span>
+              <div class="preset-img-chips">
+                <span class="preset-chip active" onclick="selectPresetImage('assets/images/products/front.webp', this)">Front View Jar</span>
+                <span class="preset-chip" onclick="selectPresetImage('assets/images/products/back.webp', this)">Back Label Jar</span>
+                <span class="preset-chip" onclick="selectPresetImage('assets/images/products/pair.webp', this)">Pair Collection</span>
+              </div>
+            </div>
+
+            <div style="text-align:center;margin-top:12px" id="imagePreviewContainer">
+              <img id="prodImagePreview" class="image-preview-thumb" src="assets/images/products/front.webp" alt="Preview">
+            </div>
+          </div>
+
+          <div class="f full">
+            <label for="prodShortDesc">Short Summary / Subtitle</label>
+            <input id="prodShortDesc" placeholder="Brief 1-line hook displayed on product cards">
+          </div>
+
+          <div class="f full">
+            <label for="prodFullDesc">Full Detailed Description</label>
+            <textarea id="prodFullDesc" placeholder="Describe the health benefits, taste profile, and packaging..." rows="3"></textarea>
+          </div>
+        </div>
+
+        <div style="display:flex;justify-content:flex-end;gap:12px;margin-top:24px">
+          <button type="button" class="btn btn-line btn-sm" onclick="document.getElementById('dlg-product-modal').close()">Cancel</button>
+          <button type="submit" class="btn btn-gold btn-sm">Add Product</button>
+        </div>
+      </form>
+    </div>
+  `;
+
+  modal.showModal();
+}
+
+// Open Modal to Edit Existing Product
+function openEditProductModal(productId) {
+  tempUploadedImage = null;
+  const allProducts = (typeof getProducts === "function") ? getProducts() : (window.PRODUCTS || []);
+  const p = allProducts.find(x => x.id === productId);
   if (!p) return;
-  const newPrice = prompt(`Enter new price for ${p.title} (${p.weight}):`, p.price || 1599);
-  if (newPrice !== null && !isNaN(+newPrice)) {
-    p.price = +newPrice;
-    toast(`Price for ${p.title} updated to ${money(p.price)}`);
-    renderProductsGrid();
+
+  const modal = $("#dlg-product-modal");
+  if (!modal) return;
+
+  const currentImg = (p.img && (p.img.front || p.img.pair)) || "assets/images/products/front.webp";
+
+  modal.innerHTML = `
+    <div class="dlg" style="width:min(720px,94vw)">
+      <button class="ic dlg-x" onclick="document.getElementById('dlg-product-modal').close()">${ICON.x}</button>
+      <h3 style="font-size:22px;margin-bottom:6px">Edit Product: ${esc(p.title || p.name)}</h3>
+      <p style="font-size:14px;color:var(--mute-dark);margin-bottom:20px">Update pricing, description, stock units, or product photography.</p>
+
+      <form id="productForm" onsubmit="event.preventDefault(); saveProductForm('${p.id}');">
+        <div class="fgrid">
+          <div class="f full">
+            <label for="prodTitle">Product Title / Name *</label>
+            <input id="prodTitle" value="${esc(p.title || p.name)}" required>
+          </div>
+
+          <div class="f">
+            <label for="prodWeight">Weight / Size *</label>
+            <input id="prodWeight" value="${esc(p.weight || '500g')}" required>
+          </div>
+
+          <div class="f">
+            <label for="prodBadge">Product Badge</label>
+            <input id="prodBadge" value="${esc(p.badge || '')}">
+          </div>
+
+          <div class="f">
+            <label for="prodPrice">Selling Price (PKR) *</label>
+            <input id="prodPrice" type="number" min="1" value="${p.price || ''}" required>
+          </div>
+
+          <div class="f">
+            <label for="prodComparePrice">Original / Compare Price (PKR)</label>
+            <input id="prodComparePrice" type="number" min="0" value="${p.comparePrice || ''}">
+          </div>
+
+          <div class="f">
+            <label for="prodStock">Current Stock Units *</label>
+            <input id="prodStock" type="number" min="0" value="${p.stock !== undefined ? p.stock : 25}" required>
+          </div>
+
+          <div class="f">
+            <label for="prodCategory">Category / Group</label>
+            <input id="prodCategory" value="${esc(p.group || 'honey-nut-mix')}">
+          </div>
+
+          <!-- Featured Image Section -->
+          <div class="f full" style="margin-top:10px">
+            <label>Featured Image Upload & Preview *</label>
+            <div class="dropzone-box" onclick="document.getElementById('prodImgFileInput').click()">
+              <input type="file" id="prodImgFileInput" accept="image/*" style="display:none" onchange="handleProductImageUpload(event)">
+              <p style="margin:0;font-size:14.5px;color:var(--gold-hi)"><b>Click or Drop to Upload New Image</b></p>
+              <p style="margin-top:4px;font-size:12.5px;color:var(--mute-dark)">Leave unchanged to keep existing image</p>
+            </div>
+
+            <div style="margin-top:12px">
+              <label for="prodImgUrlInput" style="font-size:13px;color:var(--mute-dark)">Or Edit Image URL Path</label>
+              <input id="prodImgUrlInput" value="${currentImg}" oninput="previewImageFromUrl(this.value)">
+            </div>
+
+            <div style="margin-top:10px">
+              <span style="font-size:12.5px;color:var(--mute-dark)">Quick Preset Jars:</span>
+              <div class="preset-img-chips">
+                <span class="preset-chip" onclick="selectPresetImage('assets/images/products/front.webp', this)">Front View Jar</span>
+                <span class="preset-chip" onclick="selectPresetImage('assets/images/products/back.webp', this)">Back Label Jar</span>
+                <span class="preset-chip" onclick="selectPresetImage('assets/images/products/pair.webp', this)">Pair Collection</span>
+              </div>
+            </div>
+
+            <div style="text-align:center;margin-top:12px" id="imagePreviewContainer">
+              <img id="prodImagePreview" class="image-preview-thumb" src="${currentImg}" alt="Preview">
+            </div>
+          </div>
+
+          <div class="f full">
+            <label for="prodShortDesc">Short Summary / Subtitle</label>
+            <input id="prodShortDesc" value="${esc(p.shortDesc || p.subtitle || '')}">
+          </div>
+
+          <div class="f full">
+            <label for="prodFullDesc">Full Detailed Description</label>
+            <textarea id="prodFullDesc" rows="3">${esc(p.fullDesc || '')}</textarea>
+          </div>
+        </div>
+
+        <div style="display:flex;justify-content:flex-end;gap:12px;margin-top:24px">
+          <button type="button" class="btn btn-line btn-sm" onclick="document.getElementById('dlg-product-modal').close()">Cancel</button>
+          <button type="submit" class="btn btn-gold btn-sm">Save Changes</button>
+        </div>
+      </form>
+    </div>
+  `;
+
+  modal.showModal();
+}
+
+// Image handling helpers for product modal
+function handleProductImageUpload(e) {
+  const file = e.target.files && e.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = function(evt) {
+    tempUploadedImage = evt.target.result;
+    const preview = $("#prodImagePreview");
+    if (preview) preview.src = tempUploadedImage;
+    if ($("#prodImgUrlInput")) $("#prodImgUrlInput").value = "Uploaded Image (Data)";
+    toast("Image uploaded successfully!");
+  };
+  reader.readAsDataURL(file);
+}
+
+function selectPresetImage(url, chip) {
+  tempUploadedImage = null;
+  const preview = $("#prodImagePreview");
+  if (preview) preview.src = url;
+  if ($("#prodImgUrlInput")) $("#prodImgUrlInput").value = url;
+  $$(".preset-chip").forEach(c => c.classList.remove("active"));
+  if (chip) chip.classList.add("active");
+}
+
+function previewImageFromUrl(url) {
+  tempUploadedImage = null;
+  const preview = $("#prodImagePreview");
+  if (preview && url) preview.src = url;
+}
+
+// Save Product Form (Add or Edit)
+function saveProductForm(editingId) {
+  const title = $("#prodTitle").value.trim();
+  const weight = $("#prodWeight").value.trim();
+  const price = +$("#prodPrice").value;
+  const comparePrice = $("#prodComparePrice").value ? +$("#prodComparePrice").value : null;
+  const stock = +$("#prodStock").value;
+  const badge = $("#prodBadge").value.trim();
+  const group = $("#prodCategory").value.trim() || "honey-nut-mix";
+  const shortDesc = $("#prodShortDesc").value.trim() || `${title} in ${weight} packaging.`;
+  const fullDesc = $("#prodFullDesc").value.trim() || shortDesc;
+
+  let imagePath = tempUploadedImage || ($("#prodImgUrlInput") ? $("#prodImgUrlInput").value.trim() : "") || "assets/images/products/front.webp";
+
+  if (!title || isNaN(price) || price <= 0) {
+    alert("Please provide a valid product title and price.");
+    return;
   }
+
+  const allProducts = (typeof getProducts === "function") ? getProducts() : (window.PRODUCTS || []);
+
+  if (editingId) {
+    // Edit existing product
+    const target = allProducts.find(p => p.id === editingId);
+    if (target) {
+      target.title = title;
+      target.name = title;
+      target.weight = weight;
+      target.netWeight = weight;
+      target.price = price;
+      target.comparePrice = comparePrice;
+      target.stock = stock;
+      target.badge = badge;
+      target.group = group;
+      target.shortDesc = shortDesc;
+      target.subtitle = shortDesc;
+      target.fullDesc = fullDesc;
+      if (imagePath && imagePath !== "Uploaded Image (Data)") {
+        target.img = target.img || {};
+        target.img.front = imagePath;
+        if (!target.img.pair) target.img.pair = imagePath;
+        if (!target.img.back) target.img.back = imagePath;
+      }
+      toast(`Product "${title}" updated successfully!`);
+    }
+  } else {
+    // Create new product
+    const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") + "-" + weight.toLowerCase().replace(/[^a-z0-9]+/g, "");
+    const id = "prod-" + Date.now();
+
+    const newProd = {
+      id,
+      slug,
+      group,
+      name: title,
+      title,
+      subtitle: shortDesc,
+      weight,
+      netWeight: weight,
+      price,
+      comparePrice,
+      stock,
+      featured: true,
+      badge: badge || "New",
+      maxQty: 20,
+      img: {
+        front: imagePath,
+        back: imagePath,
+        pair: imagePath
+      },
+      shortDesc,
+      fullDesc,
+      packaging: "Airtight clear jar with double freshness seal",
+      shelfLife: "12 months from packing date",
+      note: ""
+    };
+
+    allProducts.unshift(newProd);
+    toast(`Product "${title}" created successfully!`);
+  }
+
+  if (typeof saveProducts === "function") {
+    saveProducts(allProducts);
+  } else {
+    Store.set("app_products", allProducts);
+    window.PRODUCTS = allProducts;
+  }
+
+  const modal = $("#dlg-product-modal");
+  if (modal) modal.close();
+
+  renderProductsGrid();
+}
+
+// Mark Product Out of Stock
+function markOutOfStock(productId) {
+  const allProducts = (typeof getProducts === "function") ? getProducts() : (window.PRODUCTS || []);
+  const target = allProducts.find(p => p.id === productId);
+  if (!target) return;
+
+  target.stock = 0;
+  if (typeof saveProducts === "function") {
+    saveProducts(allProducts);
+  } else {
+    Store.set("app_products", allProducts);
+    window.PRODUCTS = allProducts;
+  }
+
+  toast(`"${target.title || target.name}" marked Out of Stock`);
+  renderProductsGrid();
+}
+
+// Restock Product
+function restockProduct(productId) {
+  const allProducts = (typeof getProducts === "function") ? getProducts() : (window.PRODUCTS || []);
+  const target = allProducts.find(p => p.id === productId);
+  if (!target) return;
+
+  const current = target.stock || 0;
+  const qtyStr = prompt(`Enter restock units to add for "${target.title || target.name}":`, "25");
+  if (qtyStr === null) return;
+  const qty = parseInt(qtyStr);
+  if (isNaN(qty) || qty <= 0) {
+    alert("Please enter a valid positive quantity.");
+    return;
+  }
+
+  target.stock = current + qty;
+  if (typeof saveProducts === "function") {
+    saveProducts(allProducts);
+  } else {
+    Store.set("app_products", allProducts);
+    window.PRODUCTS = allProducts;
+  }
+
+  toast(`"${target.title || target.name}" restocked with +${qty} units!`);
+  renderProductsGrid();
+}
+
+// Delete Product
+function deleteProduct(productId) {
+  let allProducts = (typeof getProducts === "function") ? getProducts() : (window.PRODUCTS || []);
+  const target = allProducts.find(p => p.id === productId);
+  if (!target) return;
+
+  const confirmDelete = confirm(`Are you sure you want to permanently remove "${target.title || target.name}" from your store?`);
+  if (!confirmDelete) return;
+
+  allProducts = allProducts.filter(p => p.id !== productId);
+  if (typeof saveProducts === "function") {
+    saveProducts(allProducts);
+  } else {
+    Store.set("app_products", allProducts);
+    window.PRODUCTS = allProducts;
+  }
+
+  toast(`Product removed successfully`);
+  renderProductsGrid();
 }
 
 // White-Label Theme Customizer Controller
@@ -472,13 +922,29 @@ function initAdmin() {
     searchInput.addEventListener("input", renderOrdersTable);
   }
 
-  // Filter Pills
-  $$(".filter-pill").forEach(pill => {
+  // Order Filter Pills
+  $$("#tab-orders .filter-pill").forEach(pill => {
     pill.addEventListener("click", () => {
-      $$(".filter-pill").forEach(p => p.classList.remove("active"));
+      $$("#tab-orders .filter-pill").forEach(p => p.classList.remove("active"));
       pill.classList.add("active");
       currentOrderFilter = pill.dataset.filter;
       renderOrdersTable();
+    });
+  });
+
+  // Product Search
+  const prodSearchInput = $("#productSearchInput");
+  if (prodSearchInput) {
+    prodSearchInput.addEventListener("input", renderProductsGrid);
+  }
+
+  // Product Filter Pills
+  $$("#productFilterPills .filter-pill").forEach(pill => {
+    pill.addEventListener("click", () => {
+      $$("#productFilterPills .filter-pill").forEach(p => p.classList.remove("active"));
+      pill.classList.add("active");
+      currentProdFilter = pill.dataset.prodFilter;
+      renderProductsGrid();
     });
   });
 }
