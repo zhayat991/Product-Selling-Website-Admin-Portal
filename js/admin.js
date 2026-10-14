@@ -117,30 +117,39 @@ function seedDefaultOrders() {
 let currentOrderFilter = "all";
 
 // Tab Navigation
-function initTabs() {
+function switchTab(tabId) {
   const navItems = $$(".sidebar-nav .nav-item");
   const panels = $$(".tab-panel");
   const titleEl = $("#topbarTitle");
 
+  navItems.forEach(n => n.classList.toggle("active", n.dataset.tab === tabId));
+  panels.forEach(p => p.classList.toggle("active", p.id === `tab-${tabId}`));
+
+  const activeItem = navItems.find(n => n.dataset.tab === tabId);
+  if (titleEl && activeItem) {
+    const span = activeItem.querySelector("span");
+    if (span) titleEl.textContent = span.textContent;
+  }
+
+  if (tabId === "orders") renderOrdersTable();
+  if (tabId === "products") renderProductsGrid();
+  if (tabId === "dashboard") renderDashboard();
+  try {
+    history.replaceState(null, "", `#${tabId}`);
+  } catch (e) {}
+}
+
+// Tab Navigation
+function initTabs() {
+  const navItems = $$(".sidebar-nav .nav-item");
   navItems.forEach(item => {
-    item.addEventListener("click", () => {
-      const tabId = item.dataset.tab;
-      navItems.forEach(n => n.classList.remove("active"));
-      item.classList.add("active");
-
-      panels.forEach(p => {
-        p.classList.toggle("active", p.id === `tab-${tabId}`);
-      });
-
-      if (titleEl) {
-        titleEl.textContent = item.querySelector("span").textContent;
-      }
-
-      if (tabId === "orders") renderOrdersTable();
-      if (tabId === "products") renderProductsGrid();
-      if (tabId === "dashboard") renderDashboard();
-    });
+    item.addEventListener("click", () => switchTab(item.dataset.tab));
   });
+
+  const hash = (location.hash || "").replace(/^#/, "");
+  if (hash && $(`#tab-${hash}`)) {
+    switchTab(hash);
+  }
 }
 
 // Render Dashboard Overview
@@ -167,13 +176,19 @@ function renderDashboard() {
   const recent = orders.slice(0, 5);
   recentTbody.innerHTML = recent.map(o => `
     <tr>
-      <td><b style="color:var(--gold-hi)">${o.id}</b></td>
+      <td><b style="color:var(--gold-hi)">#${o.id}</b></td>
       <td>${esc((o.customer && o.customer.name) || o.name || "Customer")}</td>
       <td>${new Date(o.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</td>
       <td><b>${money(o.total)}</b></td>
-      <td><span class="status-pill status-${o.status.toLowerCase()}">${o.status}</span></td>
+      <td><span class="status-pill status-${(o.status || 'pending').toLowerCase()}">${o.status}</span></td>
       <td>
-        <button class="btn btn-xs btn-line" onclick="openOrderModal('${o.id}')">View</button>
+        <button class="btn-dots" onclick="toggleActionsMenu(event, '${o.id}')" aria-label="Order Actions" title="Order Actions">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+            <circle cx="12" cy="5" r="2.2"></circle>
+            <circle cx="12" cy="12" r="2.2"></circle>
+            <circle cx="12" cy="19" r="2.2"></circle>
+          </svg>
+        </button>
       </td>
     </tr>
   `).join("");
@@ -184,9 +199,9 @@ function renderOrdersTable() {
   const tbody = $("#ordersTableBody");
   if (!tbody) return;
 
-  let orders = Store.get("app_orders") || [];
+  let orders = (typeof getAllOrders === "function") ? getAllOrders() : (Store.get("app_orders") || []);
   if (currentOrderFilter !== "all") {
-    orders = orders.filter(o => o.status.toLowerCase() === currentOrderFilter);
+    orders = orders.filter(o => (o.status || "").toLowerCase() === currentOrderFilter.toLowerCase());
   }
 
   const query = $("#orderSearchInput") ? $("#orderSearchInput").value.trim().toLowerCase() : "";
@@ -194,73 +209,691 @@ function renderOrdersTable() {
     orders = orders.filter(o => {
       const cust = o.customer || {};
       return (
-        o.id.toLowerCase().includes(query) ||
-        (cust.name || o.name || "").toLowerCase().includes(query) ||
-        (cust.phone || o.phone || "").includes(query) ||
-        (cust.city || o.city || "").toLowerCase().includes(query)
+        String(o.id || "").toLowerCase().includes(query) ||
+        String(cust.name || o.name || "").toLowerCase().includes(query) ||
+        String(cust.phone || o.phone || "").includes(query) ||
+        String(cust.city || o.city || "").toLowerCase().includes(query) ||
+        (o.tracking && String(o.tracking.trackingNumber || "").toLowerCase().includes(query))
       );
     });
   }
 
   if (!orders.length) {
-    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:36px;color:var(--mute-dark)">No orders found for this filter.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:36px;color:var(--mute-dark)">No orders found matching filter "${esc(currentOrderFilter)}".</td></tr>`;
     return;
   }
 
   tbody.innerHTML = orders.map(o => {
-    const cust = o.customer || { name: o.name, phone: o.phone, city: o.city };
-    const dateFormatted = new Date(o.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
-    const waLink = cust.phone ? `https://wa.me/92${cust.phone.replace(/^0/, "")}` : "#";
+    const cust = o.customer || { name: o.name, phone: o.phone, city: o.city, address: o.addr };
+    const dateFormatted = o.dateFormatted || (typeof formatOrderDate === "function" ? formatOrderDate(o.createdAt) : new Date(o.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }));
+    const cleanPhone = (cust.phone || "").replace(/[^0-9]/g, "").replace(/^0/, "");
+    const waReceiptUrl = cleanPhone ? `https://wa.me/92${cleanPhone}?text=${encodeURIComponent((typeof generateOrderWhatsAppMessage === "function") ? generateOrderWhatsAppMessage(o) : "Order " + o.id)}` : "#";
+    const statusLower = (o.status || "pending").toLowerCase();
 
     return `
       <tr>
-        <td><b style="color:var(--gold-hi);font-family:monospace">${o.id}</b></td>
+        <td>
+          <b style="color:var(--gold-hi);font-family:monospace;font-size:14.5px">#${o.id}</b>
+          <div style="font-size:11.5px;color:var(--mute-dark);margin-top:2px">${dateFormatted}</div>
+        </td>
         <td>
           <b>${esc(cust.name || "Customer")}</b>
-          <br><small style="color:var(--mute-dark)">${esc(cust.city || "Pakistan")}</small>
+          <div style="font-size:12.5px;color:var(--sand)">${esc(cust.city || "Pakistan")}</div>
+          <small style="color:var(--mute-dark);font-size:11.5px">${esc((cust.address || "").slice(0, 24))}${cust.address && cust.address.length > 24 ? "..." : ""}</small>
         </td>
         <td>
-          <a href="${waLink}" target="_blank" rel="noopener" style="color:var(--gold-hi);display:inline-flex;align-items:center;gap:4px">
-            ${esc(cust.phone)} ${ICON.phone}
-          </a>
-        </td>
-        <td><small>${dateFormatted}</small></td>
-        <td><b>${money(o.total)}</b><br><small style="text-transform:uppercase">${o.paymentMethod || o.pay || "cod"}</small></td>
-        <td>
-          <select class="f" style="padding:6px 10px;font-size:13px;border-radius:6px;width:auto" onchange="updateOrderStatus('${o.id}', this.value)">
-            <option value="Pending" ${o.status === "Pending" ? "selected" : ""}>Pending</option>
-            <option value="Processing" ${o.status === "Processing" ? "selected" : ""}>Processing</option>
-            <option value="Shipped" ${o.status === "Shipped" ? "selected" : ""}>Shipped</option>
-            <option value="Delivered" ${o.status === "Delivered" ? "selected" : ""}>Delivered</option>
-            <option value="Cancelled" ${o.status === "Cancelled" ? "selected" : ""}>Cancelled</option>
-          </select>
+          ${cleanPhone ? `
+            <a href="${waReceiptUrl}" target="_blank" rel="noopener" class="tag tag-emerald" style="font-size:12px;padding:4px 8px;display:inline-flex;align-items:center;gap:4px" title="Send WhatsApp Confirmation Receipt">
+              💬 ${esc(cust.phone)}
+            </a>
+          ` : '<span style="color:var(--mute-dark)">No Phone</span>'}
         </td>
         <td>
-          <div class="action-btn-group">
-            <button class="btn btn-xs btn-line" onclick="openOrderModal('${o.id}')">Details</button>
-          </div>
+          <b>${money(o.total)}</b>
+          <br><small style="text-transform:uppercase;color:var(--gold)">${o.paymentMethod || o.pay || "COD"}</small>
+        </td>
+        <td>
+          <span class="status-pill status-${statusLower}">${o.status}</span>
+          ${o.tracking && o.tracking.trackingNumber ? `
+            <div style="font-size:11px;color:var(--gold-hi);margin-top:4px">
+              🚚 ${esc(o.tracking.courier)}: <span style="font-family:monospace">${esc(o.tracking.trackingNumber)}</span>
+            </div>
+          ` : ""}
+        </td>
+        <td>
+          <button class="btn-dots" onclick="toggleActionsMenu(event, '${o.id}')" aria-label="Order Actions" title="Order Actions">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+              <circle cx="12" cy="5" r="2.2"></circle>
+              <circle cx="12" cy="12" r="2.2"></circle>
+              <circle cx="12" cy="19" r="2.2"></circle>
+            </svg>
+          </button>
         </td>
       </tr>
     `;
   }).join("");
 }
 
-// Update Order Status
-function updateOrderStatus(orderId, newStatus) {
-  const orders = Store.get("app_orders") || [];
-  const target = orders.find(o => o.id === orderId);
-  if (target) {
-    target.status = newStatus;
-    Store.set("app_orders", orders);
-    toast(`Order ${orderId} updated to ${newStatus}`);
-    renderDashboard();
-    renderOrdersTable();
+// Global 3-Dots Floating Actions Menu
+let activeActionOrderId = null;
+
+function toggleActionsMenu(e, orderId) {
+  e.stopPropagation();
+  const pop = $("#globalActionsPopover");
+  if (!pop) return;
+
+  if (activeActionOrderId === orderId && pop.style.display === "block") {
+    closeActionsMenu();
+    return;
+  }
+
+  activeActionOrderId = orderId;
+  const orders = (typeof getAllOrders === "function") ? getAllOrders() : (Store.get("app_orders") || []);
+  const o = orders.find(x => x.id === orderId);
+  if (!o) return;
+
+  const statusLower = (o.status || "pending").toLowerCase();
+
+  pop.innerHTML = `
+    <div class="pop-header">
+      <span class="pop-order-id">#${esc(o.id)}</span>
+      <span class="status-pill status-${statusLower}" style="font-size:10px;padding:2px 8px">${o.status}</span>
+    </div>
+    
+    <button class="pop-item" onclick="execOrderAction('${o.id}', 'details')">
+      <span class="pop-icon">👁️</span>
+      <span>View Order Details</span>
+    </button>
+    <button class="pop-item" onclick="execOrderAction('${o.id}', 'whatsapp')">
+      <span class="pop-icon">💬</span>
+      <span>Send WhatsApp Receipt</span>
+    </button>
+
+    <div class="pop-divider"></div>
+
+    ${statusLower === 'pending' ? `
+      <button class="pop-item pop-highlight" onclick="execOrderAction('${o.id}', 'approve')">
+        <span class="pop-icon">✓</span>
+        <span>Approve & Confirm</span>
+      </button>
+    ` : ''}
+    ${(statusLower === 'approved' || statusLower === 'processing') ? `
+      <button class="pop-item pop-dispatch" onclick="execOrderAction('${o.id}', 'dispatch')">
+        <span class="pop-icon">🚚</span>
+        <span>Dispatch with Courier</span>
+      </button>
+    ` : ''}
+    ${statusLower !== 'delivered' && statusLower !== 'cancelled' ? `
+      <button class="pop-item pop-delivered" onclick="execOrderAction('${o.id}', 'delivered')">
+        <span class="pop-icon">✅</span>
+        <span>Mark as Delivered</span>
+      </button>
+    ` : ''}
+
+    <div class="pop-divider"></div>
+    <div class="pop-label">Change Status:</div>
+    <div class="pop-status-chips">
+      <button class="pop-chip ${statusLower === 'pending' ? 'active' : ''}" onclick="execOrderAction('${o.id}', 'status_Pending')">Pending</button>
+      <button class="pop-chip ${statusLower === 'approved' ? 'active' : ''}" onclick="execOrderAction('${o.id}', 'status_Approved')">Approved</button>
+      <button class="pop-chip ${statusLower === 'processing' ? 'active' : ''}" onclick="execOrderAction('${o.id}', 'status_Processing')">Processing</button>
+      <button class="pop-chip ${statusLower === 'dispatched' ? 'active' : ''}" onclick="execOrderAction('${o.id}', 'status_Dispatched')">Dispatched</button>
+      <button class="pop-chip ${statusLower === 'delivered' ? 'active' : ''}" onclick="execOrderAction('${o.id}', 'status_Delivered')">Delivered</button>
+      <button class="pop-chip ${statusLower === 'cancelled' ? 'active' : ''}" onclick="execOrderAction('${o.id}', 'status_Cancelled')">Cancel</button>
+    </div>
+  `;
+
+  // Calculate position relative to clicked 3-dots button
+  const rect = e.currentTarget.getBoundingClientRect();
+  pop.style.display = "block";
+  const popWidth = 240;
+  let left = rect.right - popWidth;
+  if (left < 10) left = 10;
+  
+  let top = rect.bottom + 6;
+  const estimatedHeight = 310;
+  if (top + estimatedHeight > window.innerHeight) {
+    top = Math.max(10, rect.top - estimatedHeight - 6);
+  }
+
+  pop.style.top = `${top}px`;
+  pop.style.left = `${left}px`;
+
+  // Highlight active button
+  $$(".btn-dots").forEach(b => b.classList.remove("active"));
+  e.currentTarget.classList.add("active");
+}
+
+function closeActionsMenu() {
+  const pop = $("#globalActionsPopover");
+  if (pop) pop.style.display = "none";
+  $$(".btn-dots").forEach(b => b.classList.remove("active"));
+  activeActionOrderId = null;
+}
+
+// Global click outside listener to dismiss 3-dots popover
+document.addEventListener("click", e => {
+  if (!e.target.closest("#globalActionsPopover") && !e.target.closest(".btn-dots")) {
+    closeActionsMenu();
+  }
+});
+
+// Dismiss on escape key
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape") closeActionsMenu();
+});
+
+// Dismiss on window scroll
+window.addEventListener("scroll", closeActionsMenu, true);
+
+// Execute Order Action Dispatcher
+function execOrderAction(orderId, action) {
+  closeActionsMenu();
+  if (!action) return;
+  if (action === "details") {
+    openOrderModal(orderId);
+  } else if (action === "whatsapp") {
+    sendCustomerWhatsAppMessage(orderId);
+  } else if (action === "approve") {
+    approveOrder(orderId);
+  } else if (action === "dispatch") {
+    openDispatchModal(orderId);
+  } else if (action === "delivered") {
+    markOrderDelivered(orderId);
+  } else if (action.startsWith("status_")) {
+    const newStatus = action.replace("status_", "");
+    updateOrderStatus(orderId, newStatus);
   }
 }
 
-// Order Details Modal
+// 1-Click Approve Order
+function approveOrder(orderId) {
+  const o = (typeof updateOrderStatusInDb === "function") 
+    ? updateOrderStatusInDb(orderId, "Approved", "Order confirmed & approved by merchant. Ready for warehouse dispatch.")
+    : null;
+
+  toast(`Order #${orderId} marked as APPROVED!`);
+  renderDashboard();
+  renderOrdersTable();
+
+  const cust = o ? (o.customer || { phone: o.phone, name: o.name }) : null;
+  const phone = cust ? (cust.phone || "").replace(/[^0-9]/g, "") : "";
+  if (phone) {
+    if (confirm(`Order #${orderId} approved successfully!\n\nWould you like to send an instant WhatsApp confirmation receipt to customer ${cust.name || ''} (${cust.phone}) now?`)) {
+      sendCustomerWhatsAppMessage(orderId);
+    }
+  }
+}
+
+// 1-Click Send Customer WhatsApp Receipt
+function sendCustomerWhatsAppMessage(orderId) {
+  const orders = (typeof getAllOrders === "function") ? getAllOrders() : (Store.get("app_orders") || []);
+  const o = orders.find(x => x.id === orderId);
+  if (!o) return;
+
+  const cust = o.customer || { phone: o.phone, name: o.name };
+  const cleanPhone = (cust.phone || "").replace(/[^0-9]/g, "").replace(/^0/, "");
+  if (!cleanPhone) {
+    alert("Customer phone number not available for this order.");
+    return;
+  }
+
+  const msg = (typeof generateOrderWhatsAppMessage === "function") 
+    ? generateOrderWhatsAppMessage(o) 
+    : `Order #${o.id} confirmation for ${cust.name}`;
+
+  window.open(`https://wa.me/92${cleanPhone}?text=${encodeURIComponent(msg)}`, "_blank");
+}
+
+// Open Modal to Add New Manual Order
+function openAddOrderModal() {
+  let modal = $("#dlg-add-order-modal");
+  if (!modal) {
+    modal = document.createElement("dialog");
+    modal.id = "dlg-add-order-modal";
+    document.body.appendChild(modal);
+  }
+
+  const prods = (typeof getProducts === "function") ? getProducts() : (window.PRODUCTS || []);
+  const deliveryCfg = (window.BRAND_CONFIG && window.BRAND_CONFIG.delivery) || { fee: 200, freeShippingThreshold: 5000 };
+
+  const prov = [
+    "Punjab", "Sindh", "Islamabad Capital Territory", "Khyber Pakhtunkhwa",
+    "Balochistan", "Gilgit-Baltistan", "Azad Jammu & Kashmir"
+  ];
+
+  modal.innerHTML = `
+    <div class="dlg" style="width:min(740px,94vw);max-height:90vh;overflow-y:auto">
+      <style>
+        #dlg-add-order-modal label { color: #f4d77f !important; font-size: 13.5px !important; font-weight: 600 !important; margin-bottom: 6px !important; display: flex !important; align-items: center !important; gap: 6px !important; }
+        #dlg-add-order-modal input, #dlg-add-order-modal select, #dlg-add-order-modal textarea { background: #14100a !important; color: #fffdf8 !important; border: 1.5px solid rgba(214, 167, 54, 0.35) !important; padding: 12px 14px !important; border-radius: 8px !important; width: 100% !important; box-sizing: border-box !important; }
+        #dlg-add-order-modal input::placeholder, #dlg-add-order-modal textarea::placeholder { color: rgba(189, 174, 142, 0.55) !important; }
+        #dlg-add-order-modal .req { color: #ef4444 !important; font-weight: 700 !important; }
+        #dlg-add-order-modal .hint { color: #bdae8e !important; font-size: 11.5px !important; font-weight: normal !important; }
+      </style>
+      <button class="ic dlg-x" onclick="document.getElementById('dlg-add-order-modal').close()">${ICON.x}</button>
+      
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px;border-bottom:1px solid var(--hair);padding-bottom:14px">
+        <div style="width:46px;height:46px;border-radius:var(--r-sm);background:rgba(214,167,54,0.15);color:var(--gold-hi);display:grid;place-items:center;font-size:24px">📦</div>
+        <div>
+          <h3 style="font-size:22px;margin:0">Create New Customer Order</h3>
+          <p style="font-size:13.5px;color:var(--mute-dark);margin:2px 0 0">Manually record a phone, WhatsApp, or in-person order directly into the database.</p>
+        </div>
+      </div>
+
+      <form id="addOrderForm" onsubmit="event.preventDefault(); createManualOrder();">
+        <h4 style="color:var(--cream);font-size:15px;margin-bottom:12px;display:flex;align-items:center;gap:8px">
+          <span>1. Customer & Shipping Details</span>
+        </h4>
+        <div class="fgrid">
+          <div class="f">
+            <label for="moCustName">Customer Full Name <span class="req">*</span></label>
+            <input id="moCustName" placeholder="e.g. Muhammad Usman" required>
+          </div>
+
+          <div class="f">
+            <label for="moCustPhone">WhatsApp / Mobile Number <span class="req">*</span></label>
+            <input id="moCustPhone" placeholder="03XXXXXXXXX" required>
+          </div>
+
+          <div class="f full">
+            <label for="moCustEmail">Email Address <span class="hint">(Optional)</span></label>
+            <input id="moCustEmail" type="email" placeholder="customer@example.com">
+          </div>
+
+          <div class="f full">
+            <label for="moCustAddress">Street Address / House / Landmark <span class="req">*</span></label>
+            <input id="moCustAddress" placeholder="House #, Street name, Sector / Area" required>
+          </div>
+
+          <div class="f">
+            <label for="moCustCity">Destination City <span class="req">*</span></label>
+            <input id="moCustCity" placeholder="e.g. Lahore, Karachi, Islamabad" required>
+          </div>
+
+          <div class="f">
+            <label for="moCustProvince">Province <span class="req">*</span></label>
+            <select id="moCustProvince">
+              ${prov.map(p => `<option value="${p}">${p}</option>`).join("")}
+            </select>
+          </div>
+
+          <div class="f full">
+            <label for="moCustNotes">Order Notes / Landmark Instructions <span class="hint">(Optional)</span></label>
+            <textarea id="moCustNotes" rows="2" placeholder="e.g. Deliver during business hours, call before arrival"></textarea>
+          </div>
+        </div>
+
+        <h4 style="color:var(--cream);font-size:15px;margin:22px 0 12px;display:flex;align-items:center;gap:8px">
+          <span>2. Select Order Products & Quantities</span>
+        </h4>
+
+        <div style="background:rgba(255,255,255,0.02);border:1px solid var(--hair);border-radius:var(--r-md);padding:14px;margin-bottom:16px">
+          <table style="width:100%;border-collapse:collapse">
+            <thead>
+              <tr style="border-bottom:1px solid var(--hair);color:var(--gold-hi);font-size:12px;text-transform:uppercase">
+                <th style="text-align:left;padding:8px">Product Item</th>
+                <th style="text-align:center;padding:8px">Price</th>
+                <th style="text-align:center;padding:8px;width:120px">Quantity</th>
+                <th style="text-align:right;padding:8px">Subtotal</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${prods.map((p, idx) => `
+                <tr style="border-bottom:1px solid rgba(255,255,255,0.05)">
+                  <td style="padding:10px 8px">
+                    <div style="display:flex;align-items:center;gap:10px">
+                      <img src="${(p.img && (p.img.front || p.img.pair)) || 'assets/images/products/front.webp'}" alt="${p.name}" style="width:36px;height:36px;object-fit:contain;border-radius:4px;background:#000">
+                      <div>
+                        <b style="color:var(--cream);font-size:13.5px">${esc(p.name)}</b>
+                        <div style="font-size:12px;color:var(--sand)">${esc(p.weight)} ${p.badge ? `· <span style="color:var(--gold-hi)">${p.badge}</span>` : ''}</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td style="text-align:center;padding:10px 8px;font-size:13.5px;color:var(--sand)">
+                    ${money(p.price)}
+                  </td>
+                  <td style="text-align:center;padding:10px 8px">
+                    <input type="number" min="0" max="50" value="${idx === 0 ? '1' : '0'}" class="mo-item-qty" data-pid="${p.id}" data-price="${p.price}" data-name="${esc(p.name)}" data-weight="${esc(p.weight)}" oninput="recalcManualOrderTotal()" style="width:80px !important;text-align:center !important;padding:6px !important;margin:0 auto !important">
+                  </td>
+                  <td style="text-align:right;padding:10px 8px;font-weight:700;color:var(--cream);font-size:14px" id="moLineSub_${p.id}">
+                    ${money(idx === 0 ? p.price : 0)}
+                  </td>
+                </tr>
+              `).join("")}
+            </tbody>
+          </table>
+
+          <div style="display:flex;justify-content:flex-end;margin-top:14px;padding-top:12px;border-top:1px solid var(--hair)">
+            <div style="width:280px;font-size:13.5px">
+              <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+                <span style="color:var(--mute-dark)">Products Subtotal:</span>
+                <b id="moSubtotalDisplay" style="color:var(--cream)">PKR 0</b>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+                <span style="color:var(--mute-dark)">Courier Shipping:</span>
+                <div style="width:110px">
+                  <input type="number" id="moShipping" value="${deliveryCfg.fee || 200}" min="0" oninput="recalcManualOrderTotal()" style="padding:4px 8px !important;font-size:13px !important;text-align:right !important">
+                </div>
+              </div>
+              <div style="display:flex;justify-content:space-between;padding-top:8px;border-top:1px solid var(--hair);font-size:16px">
+                <span style="font-weight:700;color:var(--gold-hi)">Total Amount:</span>
+                <b id="moTotalDisplay" style="font-weight:700;color:var(--gold-hi)">PKR 0</b>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <h4 style="color:var(--cream);font-size:15px;margin:22px 0 12px;display:flex;align-items:center;gap:8px">
+          <span>3. Order Status & Payment Method</span>
+        </h4>
+        <div class="fgrid">
+          <div class="f">
+            <label for="moStatus">Initial Order Status <span class="req">*</span></label>
+            <select id="moStatus">
+              <option value="Approved" selected>Approved (Confirmed & Ready)</option>
+              <option value="Pending">Pending Verification</option>
+              <option value="Processing">Processing / Packed</option>
+              <option value="Dispatched">Dispatched with Courier</option>
+            </select>
+          </div>
+
+          <div class="f">
+            <label for="moPaymentMethod">Payment Method <span class="req">*</span></label>
+            <select id="moPaymentMethod">
+              <option value="Cash on Delivery (COD)" selected>Cash on Delivery (COD)</option>
+              <option value="Direct Bank Transfer">Direct Bank Transfer</option>
+              <option value="JazzCash Mobile Account">JazzCash</option>
+              <option value="Easypaisa Mobile Account">Easypaisa</option>
+              <option value="Advance Paid (Verified)">Advance Paid (Verified)</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="display:flex;justify-content:flex-end;gap:12px;margin-top:24px;border-top:1px solid var(--hair);padding-top:18px">
+          <button type="button" class="btn btn-line btn-sm" onclick="document.getElementById('dlg-add-order-modal').close()">Cancel</button>
+          <button type="submit" class="btn btn-gold btn-sm">Create Order & Save to Database</button>
+        </div>
+      </form>
+    </div>
+  `;
+
+  modal.showModal();
+  recalcManualOrderTotal();
+}
+
+// Recalculate Live Subtotal and Total for Manual Order Form
+function recalcManualOrderTotal() {
+  const inputs = $$(".mo-item-qty");
+  let subtotal = 0;
+
+  inputs.forEach(inp => {
+    const qty = Math.max(parseInt(inp.value) || 0, 0);
+    const price = parseFloat(inp.dataset.price) || 0;
+    const lineSub = qty * price;
+    subtotal += lineSub;
+    const lineDisplay = $(`#moLineSub_${inp.dataset.pid}`);
+    if (lineDisplay) lineDisplay.textContent = money(lineSub);
+  });
+
+  const shipInput = $("#moShipping");
+  const shipping = shipInput ? Math.max(parseFloat(shipInput.value) || 0, 0) : 0;
+  const total = subtotal + shipping;
+
+  const subDisplay = $("#moSubtotalDisplay");
+  const totalDisplay = $("#moTotalDisplay");
+  if (subDisplay) subDisplay.textContent = money(subtotal);
+  if (totalDisplay) totalDisplay.textContent = money(total);
+}
+
+// Create Manual Order and Save to Database
+function createManualOrder() {
+  const name = $("#moCustName").value.trim();
+  const phone = $("#moCustPhone").value.trim();
+  const email = $("#moCustEmail").value.trim();
+  const address = $("#moCustAddress").value.trim();
+  const city = $("#moCustCity").value.trim();
+  const province = $("#moCustProvince").value;
+  const notes = $("#moCustNotes").value.trim();
+  const status = $("#moStatus").value;
+  const paymentMethod = $("#moPaymentMethod").value;
+
+  const items = [];
+  $$(".mo-item-qty").forEach(inp => {
+    const qty = Math.max(parseInt(inp.value) || 0, 0);
+    if (qty > 0) {
+      items.push({
+        id: inp.dataset.pid,
+        name: inp.dataset.name,
+        weight: inp.dataset.weight,
+        qty: qty,
+        price: parseFloat(inp.dataset.price) || 0
+      });
+    }
+  });
+
+  if (!items.length) {
+    alert("Please select at least 1 product quantity for this order.");
+    return;
+  }
+
+  const subtotal = items.reduce((s, i) => s + i.qty * i.price, 0);
+  const shipInput = $("#moShipping");
+  const shipping = shipInput ? Math.max(parseFloat(shipInput.value) || 0, 0) : 0;
+  const total = subtotal + shipping;
+
+  const now = new Date();
+  const yy = String(now.getFullYear()).slice(-2);
+  const mm = String(now.getMonth() + 1).padStart(2, "0");
+  const dd = String(now.getDate()).padStart(2, "0");
+  const rand = Math.floor(1000 + Math.random() * 9000);
+  const orderId = `MSR-${yy}${mm}${dd}-${rand}`;
+  const dateFormatted = (typeof formatOrderDate === "function") ? formatOrderDate(now) : now.toLocaleString();
+
+  const timeline = [
+    {
+      status: "Pending",
+      title: "Order Created Manually",
+      time: dateFormatted,
+      note: "Order recorded manually via Admin Portal"
+    }
+  ];
+
+  if (status === "Approved") {
+    timeline.push({
+      status: "Approved",
+      title: "Order Approved & Confirmed",
+      time: dateFormatted,
+      note: "Order confirmed & approved upon manual entry"
+    });
+  } else if (status === "Processing") {
+    timeline.push({
+      status: "Processing",
+      title: "Packed & Ready for Dispatch",
+      time: dateFormatted,
+      note: "Order set to Processing by merchant"
+    });
+  } else if (status === "Dispatched") {
+    timeline.push({
+      status: "Dispatched",
+      title: "Dispatched with Courier Partner",
+      time: dateFormatted,
+      note: "Order dispatched with courier partner"
+    });
+  }
+
+  const order = {
+    id: orderId,
+    createdAt: now.toISOString(),
+    dateFormatted,
+    status,
+    paymentMethod,
+    pay: paymentMethod,
+    subtotal,
+    shipping,
+    total,
+    items,
+    customer: {
+      name,
+      phone,
+      email,
+      address,
+      city,
+      province,
+      notes
+    },
+    name,
+    phone,
+    email,
+    addr: address,
+    city,
+    prov: province,
+    note: notes,
+    tracking: {
+      courier: "",
+      trackingNumber: "",
+      dispatchedAt: status === "Dispatched" ? now.toISOString() : null,
+      deliveredAt: null
+    },
+    timeline
+  };
+
+  if (typeof saveOrder === "function") {
+    saveOrder(order);
+  } else {
+    const orders = Store.get("app_orders") || [];
+    orders.unshift(order);
+    Store.set("app_orders", orders);
+  }
+
+  const modal = $("#dlg-add-order-modal");
+  if (modal) modal.close();
+
+  toast(`Order #${orderId} created successfully!`);
+  renderDashboard();
+  renderOrdersTable();
+
+  const cleanPhone = phone.replace(/[^0-9]/g, "").replace(/^0/, "");
+  if (cleanPhone) {
+    if (confirm(`Order #${orderId} created successfully in database!\n\nWould you like to send an instant WhatsApp order confirmation receipt to customer ${name} (${phone}) now?`)) {
+      sendCustomerWhatsAppMessage(orderId);
+    }
+  }
+}
+
+// 1-Click Dispatch Order Modal
+function openDispatchModal(orderId) {
+  const orders = (typeof getAllOrders === "function") ? getAllOrders() : (Store.get("app_orders") || []);
+  const o = orders.find(x => x.id === orderId);
+  if (!o) return;
+
+  let modal = $("#dlg-dispatch-modal");
+  if (!modal) {
+    modal = document.createElement("dialog");
+    modal.id = "dlg-dispatch-modal";
+    document.body.appendChild(modal);
+  }
+
+  const cust = o.customer || { name: o.name, city: o.city };
+
+  modal.innerHTML = `
+    <div class="dlg" style="width:min(520px,94vw)">
+      <button class="ic dlg-x" onclick="document.getElementById('dlg-dispatch-modal').close()">${ICON.x}</button>
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px">
+        <div style="width:44px;height:44px;border-radius:var(--r-sm);background:rgba(168,85,247,0.15);color:#d8b4fe;display:grid;place-items:center;font-size:22px">🚚</div>
+        <div>
+          <h3 style="font-size:20px;margin:0">Dispatch Order #${o.id}</h3>
+          <p style="font-size:13px;color:var(--mute-dark);margin:2px 0 0">Customer: ${esc(cust.name)} (${esc(cust.city || "Pakistan")})</p>
+        </div>
+      </div>
+
+      <form onsubmit="event.preventDefault(); applyDispatch('${o.id}');">
+        <div class="f" style="margin-bottom:14px">
+          <label for="dispatchCourier">Select Courier Service Partner *</label>
+          <select id="dispatchCourier" required style="padding:12px 14px">
+            <option value="TCS Express">TCS Express (Air Cargo / Overnight)</option>
+            <option value="Leopards Courier">Leopards Courier Service</option>
+            <option value="Trax Logistics">Trax Express Delivery</option>
+            <option value="Call Courier">Call Courier</option>
+            <option value="M&P Express">M&P Logistics</option>
+            <option value="PostEx">PostEx Courier</option>
+            <option value="Pakistan Post">Pakistan Post (Registered)</option>
+          </select>
+        </div>
+
+        <div class="f" style="margin-bottom:14px">
+          <label for="dispatchTracking">Consignment / Tracking Number *</label>
+          <input id="dispatchTracking" placeholder="e.g. TCS-77291048 or LEOP-99214" required style="font-size:16px;font-family:monospace;padding:12px 14px">
+        </div>
+
+        <div class="f" style="margin-bottom:18px">
+          <label for="dispatchNotes">Dispatch Notes / Remarks</label>
+          <input id="dispatchNotes" placeholder="e.g. Handed over to courier driver, ETA 2 business days">
+        </div>
+
+        <div style="display:flex;justify-content:flex-end;gap:12px">
+          <button type="button" class="btn btn-line btn-sm" onclick="document.getElementById('dlg-dispatch-modal').close()">Cancel</button>
+          <button type="submit" class="btn btn-gold btn-sm">Confirm Dispatch & Update Tracking</button>
+        </div>
+      </form>
+    </div>
+  `;
+
+  modal.showModal();
+}
+
+function applyDispatch(orderId) {
+  const courier = $("#dispatchCourier").value;
+  const trackingNumber = $("#dispatchTracking").value.trim();
+  const notes = $("#dispatchNotes").value.trim();
+
+  const o = (typeof updateOrderStatusInDb === "function")
+    ? updateOrderStatusInDb(orderId, "Dispatched", notes || `Dispatched via ${courier} (#${trackingNumber})`, { courier, trackingNumber })
+    : null;
+
+  const modal = $("#dlg-dispatch-modal");
+  if (modal) modal.close();
+
+  toast(`Order #${orderId} dispatched via ${courier}! Tracking: ${trackingNumber}`);
+  renderDashboard();
+  renderOrdersTable();
+
+  const custPhone = (o && o.customer && o.customer.phone) || (o && o.phone) || "";
+  if (custPhone && confirm(`Order #${orderId} dispatched with ${courier}!\n\nSend tracking link and consignment details to customer's WhatsApp now?`)) {
+    sendCustomerWhatsAppMessage(orderId);
+  }
+}
+
+// 1-Click Mark Order Delivered
+function markOrderDelivered(orderId) {
+  if (!confirm(`Mark Order #${orderId} as successfully DELIVERED and payment received?`)) return;
+  if (typeof updateOrderStatusInDb === "function") {
+    updateOrderStatusInDb(orderId, "Delivered", "Delivered successfully to customer address. Payment collected.");
+  }
+  toast(`Order #${orderId} marked as DELIVERED!`);
+  renderDashboard();
+  renderOrdersTable();
+}
+
+// General Update Order Status Dropdown
+function updateOrderStatus(orderId, newStatus) {
+  if (typeof updateOrderStatusInDb === "function") {
+    updateOrderStatusInDb(orderId, newStatus, `Status updated to ${newStatus}`);
+  } else {
+    const orders = Store.get("app_orders") || [];
+    const target = orders.find(o => o.id === orderId);
+    if (target) {
+      target.status = newStatus;
+      Store.set("app_orders", orders);
+    }
+  }
+  toast(`Order #${orderId} updated to ${newStatus}`);
+  renderDashboard();
+  renderOrdersTable();
+}
+
+// Order Details & Timeline Modal
 function openOrderModal(orderId) {
-  const orders = Store.get("app_orders") || [];
+  const orders = (typeof getAllOrders === "function") ? getAllOrders() : (Store.get("app_orders") || []);
   const o = orders.find(x => x.id === orderId);
   if (!o) return;
 
@@ -268,50 +901,117 @@ function openOrderModal(orderId) {
   const modal = $("#dlg-order-details");
   if (!modal) return;
 
+  const cleanPhone = (cust.phone || "").replace(/[^0-9]/g, "").replace(/^0/, "");
+  const waReceiptUrl = cleanPhone ? `https://wa.me/92${cleanPhone}?text=${encodeURIComponent((typeof generateOrderWhatsAppMessage === "function") ? generateOrderWhatsAppMessage(o) : "Order " + o.id)}` : "#";
+
   modal.innerHTML = `
-    <div class="dlg" style="width:min(640px,94vw)">
+    <div class="dlg" style="width:min(720px,94vw)">
       <button class="ic dlg-x" onclick="document.getElementById('dlg-order-details').close()">${ICON.x}</button>
-      <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px">
-        <h3 style="font-size:22px;margin:0">Order ${o.id}</h3>
-        <span class="status-pill status-${o.status.toLowerCase()}">${o.status}</span>
-      </div>
-      <p style="font-size:14px;color:var(--mute-dark);margin-bottom:20px">Placed on ${new Date(o.createdAt).toLocaleString()}</p>
       
-      <div style="background:rgba(255,255,255,0.02);border:1px solid var(--hair);border-radius:var(--r-sm);padding:18px;margin-bottom:20px">
-        <h4 style="color:var(--gold-hi);margin-bottom:8px">Customer & Delivery Info</h4>
-        <p><b>Name:</b> ${esc(cust.name)}</p>
-        <p><b>Phone:</b> <a href="tel:${cust.phone}" style="color:var(--gold-hi)">${esc(cust.phone)}</a></p>
-        ${cust.email ? `<p><b>Email:</b> ${esc(cust.email)}</p>` : ""}
-        <p><b>Address:</b> ${esc(cust.address)}, ${esc(cust.city)}, ${esc(cust.province || "")}</p>
-        ${cust.notes ? `<p><b>Special Notes:</b> <i>${esc(cust.notes)}</i></p>` : ""}
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:16px;border-bottom:1px solid var(--hair);padding-bottom:14px">
+        <div>
+          <span style="font-size:12px;color:var(--gold-hi);text-transform:uppercase;letter-spacing:0.05em">Order Information</span>
+          <h3 style="font-size:22px;margin:2px 0 0;color:var(--cream)">Order #${o.id}</h3>
+          <small style="color:var(--mute-dark)">Placed on ${o.dateFormatted || formatOrderDate(o.createdAt)}</small>
+        </div>
+        <div style="text-align:right">
+          <span class="status-pill status-${(o.status || 'pending').toLowerCase()}" style="font-size:13px;padding:6px 14px">${o.status}</span>
+          <div style="margin-top:4px;font-size:13px;color:var(--sand)">Payment: <b>${o.paymentMethod || "COD"}</b></div>
+        </div>
       </div>
 
-      <div style="background:rgba(255,255,255,0.02);border:1px solid var(--hair);border-radius:var(--r-sm);padding:18px;margin-bottom:24px">
-        <h4 style="color:var(--gold-hi);margin-bottom:12px">Ordered Items</h4>
-        <table class="admin-table">
-          ${(o.items || []).map(i => `
-            <tr>
-              <td><b>${esc(i.name)}</b> (${esc(i.weight || "")})</td>
-              <td style="text-align:center">× ${i.qty}</td>
-              <td style="text-align:right"><b>${money(i.qty * i.price)}</b></td>
+      <!-- Quick Lifecycle Action Bar -->
+      <div style="background:rgba(214,167,54,0.06);border:1px solid var(--hair);border-radius:var(--r-sm);padding:14px 18px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
+        <span style="font-size:13.5px;color:var(--cream)"><b>Fulfillment Action:</b></span>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          ${o.status === "Pending" ? `<button class="btn btn-xs btn-success" onclick="approveOrder('${o.id}'); openOrderModal('${o.id}');">✓ Approve Order</button>` : ""}
+          <button class="btn btn-xs btn-warning" onclick="document.getElementById('dlg-order-details').close(); openDispatchModal('${o.id}');">🚚 Set Courier Tracking</button>
+          ${o.status !== "Delivered" ? `<button class="btn btn-xs btn-success" onclick="markOrderDelivered('${o.id}'); openOrderModal('${o.id}');">✓ Mark Delivered</button>` : ""}
+          <a class="btn btn-xs btn-gold" href="${waReceiptUrl}" target="_blank" rel="noopener">💬 WhatsApp Invoice</a>
+        </div>
+      </div>
+
+      <!-- Consignment Tracking Details (if any) -->
+      ${o.tracking && o.tracking.trackingNumber ? `
+        <div style="background:rgba(168,85,247,0.1);border:1px solid rgba(168,85,247,0.35);border-radius:var(--r-sm);padding:14px 18px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:center">
+          <div>
+            <div style="font-size:12px;color:#d8b4fe;text-transform:uppercase;font-weight:600">Active Consignment</div>
+            <div style="font-size:16px;color:#fff;font-weight:700">🚚 ${esc(o.tracking.courier)}</div>
+            <div style="font-size:13px;color:var(--sand)">Tracking ID: <b style="font-family:monospace;color:var(--gold-hi)">${esc(o.tracking.trackingNumber)}</b></div>
+          </div>
+          <button class="btn btn-xs btn-line" onclick="navigator.clipboard.writeText('${esc(o.tracking.trackingNumber)}'); toast('Tracking number copied!');">Copy</button>
+        </div>
+      ` : ""}
+
+      <!-- 2 Columns: Customer Info & Ordered Items -->
+      <div style="display:grid;grid-template-columns:1fr 1.2fr;gap:20px;margin-bottom:20px">
+        <div style="background:rgba(255,255,255,0.02);border:1px solid var(--hair);border-radius:var(--r-sm);padding:16px">
+          <h4 style="color:var(--gold-hi);margin:0 0 10px;font-size:14px;text-transform:uppercase">Customer & Destination</h4>
+          <p style="margin:0 0 6px"><b>Name:</b> ${esc(cust.name)}</p>
+          <p style="margin:0 0 6px"><b>Phone:</b> <a href="tel:${cust.phone}" style="color:var(--gold-hi)">${esc(cust.phone)}</a></p>
+          ${cust.email ? `<p style="margin:0 0 6px"><b>Email:</b> ${esc(cust.email)}</p>` : ""}
+          <p style="margin:0 0 6px"><b>Address:</b> ${esc(cust.address)}, ${esc(cust.city)}, ${esc(cust.province || "")}</p>
+          ${cust.notes ? `<p style="margin:0;font-size:12.5px;color:var(--mute-dark)"><b>Notes:</b> <i>${esc(cust.notes)}</i></p>` : ""}
+        </div>
+
+        <div style="background:rgba(255,255,255,0.02);border:1px solid var(--hair);border-radius:var(--r-sm);padding:16px">
+          <h4 style="color:var(--gold-hi);margin:0 0 10px;font-size:14px;text-transform:uppercase">Ordered Products</h4>
+          <table class="admin-table" style="font-size:13.5px">
+            ${(o.items || []).map(i => `
+              <tr>
+                <td style="padding:6px 0"><b>${esc(i.name)}</b><br><small style="color:var(--mute-dark)">${esc(i.weight || "")}</small></td>
+                <td style="text-align:center;padding:6px 0">× ${i.qty}</td>
+                <td style="text-align:right;padding:6px 0"><b>${money(i.qty * i.price)}</b></td>
+              </tr>
+            `).join("")}
+            <tr style="border-top:1px solid var(--hair)">
+              <td colspan="2" style="padding:6px 0">Delivery Shipping</td>
+              <td style="text-align:right;padding:6px 0">${o.shipping === 0 ? '<span class="tag tag-emerald">FREE</span>' : money(o.shipping || 200)}</td>
             </tr>
-          `).join("")}
-          <tr><td colspan="2">Shipping Courier</td><td style="text-align:right">${money(o.shipping || 200)}</td></tr>
-          <tr style="border-top:1.5px solid var(--gold)"><td colspan="2"><b style="font-size:16px">Total Order Value</b></td><td style="text-align:right"><b style="font-size:18px;color:var(--gold-hi)">${money(o.total)}</b></td></tr>
-        </table>
+            <tr style="border-top:1.5px solid var(--gold)">
+              <td colspan="2" style="padding:8px 0"><b style="font-size:15px;color:var(--cream)">Total Amount</b></td>
+              <td style="text-align:right;padding:8px 0"><b style="font-size:17px;color:var(--gold-hi)">${money(o.total)}</b></td>
+            </tr>
+          </table>
+        </div>
       </div>
 
-      <div style="display:flex;justify-content:flex-end;gap:12px">
-        <a class="btn btn-gold btn-sm" target="_blank" rel="noopener" href="https://wa.me/92${(cust.phone || '').replace(/^0/, '')}?text=${encodeURIComponent('Hello ' + cust.name + ', regarding your ' + window.BRAND_CONFIG.brand.name + ' order ' + o.id + '...') }">
-          WhatsApp Customer
-        </a>
-        <button class="btn btn-line btn-sm" onclick="document.getElementById('dlg-order-details').close()">Close</button>
+      <!-- Live Order Lifecycle Milestones Timeline -->
+      <div style="background:rgba(255,255,255,0.02);border:1px solid var(--hair);border-radius:var(--r-sm);padding:18px;margin-bottom:20px">
+        <h4 style="color:var(--gold-hi);margin:0 0 12px;font-size:14px;text-transform:uppercase">Consignment Milestones & History</h4>
+        <div style="display:flex;flex-direction:column;gap:12px;border-left:2px solid var(--gold);padding-left:16px;margin-left:6px">
+          ${(o.timeline || []).slice().reverse().map(ev => `
+            <div>
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <b style="color:var(--cream);font-size:14px">${esc(ev.title)}</b>
+                <small style="color:var(--mute-dark);font-size:12px">${esc(ev.time)}</small>
+              </div>
+              <p style="margin:2px 0 0;font-size:13px;color:var(--sand)">${esc(ev.note || "")}</p>
+            </div>
+          `).join("")}
+        </div>
+      </div>
+
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
+        <a class="btn btn-line btn-sm" href="store.html#/track/${o.id}" target="_blank">View Customer Tracking Page ↗</a>
+        <div style="display:flex;gap:10px">
+          <a class="btn btn-gold btn-sm" href="${waReceiptUrl}" target="_blank" rel="noopener">Send WhatsApp Invoice</a>
+          <button class="btn btn-line btn-sm" onclick="document.getElementById('dlg-order-details').close()">Close</button>
+        </div>
       </div>
     </div>
   `;
 
   modal.showModal();
 }
+
+// Global window exposure for inline onclick handlers
+window.approveOrder = approveOrder;
+window.sendCustomerWhatsAppMessage = sendCustomerWhatsAppMessage;
+window.openDispatchModal = openDispatchModal;
+window.applyDispatch = applyDispatch;
+window.markOrderDelivered = markOrderDelivered;
+window.openOrderModal = openOrderModal;
 
 // Product Catalog & Inventory State
 let currentProdFilter = "all";
@@ -389,19 +1089,19 @@ function renderProductsGrid() {
           </div>
 
           <div class="prod-actions">
-            <button class="btn btn-xs btn-line" onclick="openEditProductModal('${p.id}')">
+            <button type="button" class="btn btn-xs btn-line" onclick="openEditProductModal('${p.id}')">
               ✏️ Edit
             </button>
             ${isOutOfStock ? `
-              <button class="btn btn-xs btn-success" onclick="restockProduct('${p.id}')">
+              <button type="button" class="btn btn-xs btn-success" onclick="restockProduct('${p.id}')">
                 📦 Restock
               </button>
             ` : `
-              <button class="btn btn-xs btn-warning" onclick="markOutOfStock('${p.id}')">
+              <button type="button" class="btn btn-xs btn-warning" onclick="markOutOfStock('${p.id}')">
                 ⚠️ Out of Stock
               </button>
             `}
-            <button class="btn btn-xs btn-danger" style="grid-column: 1 / -1" onclick="deleteProduct('${p.id}')">
+            <button type="button" class="btn btn-xs btn-danger" style="grid-column: 1 / -1" onclick="deleteProduct('${p.id}')">
               🗑️ Remove Product
             </button>
           </div>
@@ -869,23 +1569,68 @@ window.markOutOfStock = markOutOfStock;
 window.openAddProductModal = openAddProductModal;
 window.openEditProductModal = openEditProductModal;
 window.deleteProduct = deleteProduct;
+window.executeDeleteProduct = executeDeleteProduct;
+window.openAddOrderModal = openAddOrderModal;
+window.recalcManualOrderTotal = recalcManualOrderTotal;
+window.createManualOrder = createManualOrder;
+window.handleOrderAction = handleOrderAction;
+window.toggleActionsMenu = toggleActionsMenu;
+window.closeActionsMenu = closeActionsMenu;
+window.execOrderAction = execOrderAction;
+window.switchTab = switchTab;
 
-// Delete Product
+// Delete Product - In-App Custom Confirmation Dialog (Replaces native confirm)
 function deleteProduct(productId) {
   let allProducts = (typeof getProducts === "function") ? getProducts() : (window.PRODUCTS || []);
   const target = allProducts.find(p => p.id === productId);
   if (!target) return;
 
-  const confirmDelete = confirm(`Are you sure you want to permanently remove "${target.title || target.name}" from your store?`);
-  if (!confirmDelete) return;
+  let modal = $("#dlg-confirm-delete");
+  if (!modal) {
+    modal = document.createElement("dialog");
+    modal.id = "dlg-confirm-delete";
+    document.body.appendChild(modal);
+  }
 
+  modal.innerHTML = `
+    <div class="dlg" style="width:min(440px,94vw);text-align:center;padding:32px 24px">
+      <div style="width:58px;height:58px;border-radius:50%;background:rgba(239,68,68,0.15);color:#ef4444;display:grid;place-items:center;font-size:26px;margin:0 auto 16px">
+        🗑️
+      </div>
+      <h3 style="font-size:20px;color:var(--cream);margin-bottom:8px">Remove Product?</h3>
+      <p style="font-size:14px;color:var(--sand);margin-bottom:24px;line-height:1.5">
+        Are you sure you want to permanently remove <b style="color:var(--gold-hi)">"${esc(target.title || target.name)}"</b> from your store catalog?
+      </p>
+      <div style="display:flex;gap:12px;justify-content:center">
+        <button type="button" class="btn btn-sm btn-line" onclick="document.getElementById('dlg-confirm-delete').close()">Cancel</button>
+        <button type="button" class="btn btn-sm btn-danger" onclick="executeDeleteProduct('${productId}')">Yes, Remove Product</button>
+      </div>
+    </div>
+  `;
+
+  modal.showModal();
+}
+
+function executeDeleteProduct(productId) {
+  // Record in permanently deleted products registry
+  let deletedIds = Store.get("app_deleted_products") || [];
+  if (!deletedIds.includes(productId)) {
+    deletedIds.push(productId);
+    Store.set("app_deleted_products", deletedIds);
+  }
+
+  let allProducts = (typeof getProducts === "function") ? getProducts() : (window.PRODUCTS || []);
   allProducts = allProducts.filter(p => p.id !== productId);
+
   if (typeof saveProducts === "function") {
     saveProducts(allProducts);
   } else {
     Store.set("app_products", allProducts);
     window.PRODUCTS = allProducts;
   }
+
+  const modal = $("#dlg-confirm-delete");
+  if (modal) modal.close();
 
   toast(`Product removed successfully`);
   renderProductsGrid();
@@ -1034,4 +1779,8 @@ function initAdmin() {
   });
 }
 
-window.addEventListener("DOMContentLoaded", initAdmin);
+if (document.readyState === "loading") {
+  window.addEventListener("DOMContentLoaded", initAdmin);
+} else {
+  initAdmin();
+}

@@ -103,10 +103,10 @@ function secWelcome() {
 function prodCard(p) {
   const buy = canBuy(p);
   const isOutOfStock = p.stock !== undefined && p.stock <= 0;
-  const qid = "q-pc-" + p.id;
+  const isProminent = p.prominent || p.id === "msr-250";
   const imgSrc = (p.img && (p.img.front || p.img.pair)) || "assets/images/products/front.webp";
   return `
-    <article class="pc reveal ${isOutOfStock ? 'pc-out' : ''}">
+    <article class="pc reveal ${isOutOfStock ? 'pc-out' : ''} ${isProminent ? 'pc-prominent' : ''}">
       <div class="pc-img">
         <span class="pill pc-size">${isOutOfStock ? 'Out of Stock' : (p.badge || p.weight)}</span>
         <img src="${imgSrc}" alt="${p.name} ${p.weight}" loading="lazy">
@@ -121,11 +121,10 @@ function prodCard(p) {
         </div>
         ${p.note ? `<p class="pc-note">${p.note}</p>` : ""}
         <div class="buy-row">
-          ${qtyCtl(qid, 1)}
-          <button class="btn btn-gold btn-sm" data-act="add" data-q="${qid}" data-pid="${p.id}" ${buy ? "" : "disabled"}>
+          <button class="btn btn-gold btn-sm" data-act="add" data-pid="${p.id}" ${buy ? "" : "disabled"}>
             ${buy ? `${ICON.bag} Add to Cart` : "Out of Stock"}
           </button>
-          <button class="btn btn-line btn-sm" data-act="buy" data-q="${qid}" data-pid="${p.id}" ${buy ? "" : "disabled"}>
+          <button class="btn btn-line btn-sm" data-act="buy" data-pid="${p.id}" ${buy ? "" : "disabled"}>
             ${buy ? "Buy Now" : "Unavailable"}
           </button>
         </div>
@@ -631,10 +630,13 @@ views.confirmation = () => {
     return null;
   }
   const C = window.BRAND_CONFIG.contact;
-  const payMethod = (window.BRAND_CONFIG.payments || []).find(p => p.id === o.pay) || { name: o.pay };
-  const msg = orderMessage(o);
-  const wa = C.whatsapp ? `<a class="btn btn-gold btn-sm" target="_blank" rel="noopener" href="https://wa.me/${C.whatsapp}?text=${encodeURIComponent(msg)}">Confirm via WhatsApp</a>` : "";
-  const em = `<a class="btn btn-line btn-sm" href="mailto:${C.email}?subject=${encodeURIComponent("Order " + o.id + " Confirmation")}&body=${encodeURIComponent(msg)}">Confirm via Email</a>`;
+  const payMethod = (window.BRAND_CONFIG.payments || []).find(p => p.id === (o.paymentMethod || o.pay)) || { name: (o.paymentMethod || o.pay || "Cash on Delivery") };
+  const waMsg = (typeof generateOrderWhatsAppMessage === "function") ? generateOrderWhatsAppMessage(o) : orderMessage(o);
+
+  const custPhone = (o.customer && o.customer.phone) || o.phone || "";
+  const waToCustomer = custPhone ? `<a class="btn btn-gold btn-sm" target="_blank" rel="noopener" href="https://wa.me/92${custPhone.replace(/^0/, "")}?text=${encodeURIComponent(waMsg)}">💬 Receive WhatsApp Confirmation</a>` : "";
+  const trackBtn = `<a class="btn btn-line btn-sm" href="#/track/${o.id}">🚚 Track Order Live</a>`;
+  const emailBtn = `<a class="btn btn-line btn-sm" href="mailto:${(o.customer && o.customer.email) || o.email || C.email}?subject=${encodeURIComponent("Order " + o.id + " Confirmation")}&body=${encodeURIComponent(waMsg)}">✉ Email Receipt</a>`;
 
   return {
     title: `Order Placed | ${window.BRAND_CONFIG.brand.name}`,
@@ -642,32 +644,211 @@ views.confirmation = () => {
       <section class="page light">
         <div class="wrap done">
           <div class="tick">${ICON.check}</div>
-          <h1>Thank you, ${esc(o.name.split(" ")[0])}!</h1>
-          <p class="lead">Your order has been recorded successfully. Order reference: <span class="oid">${o.id}</span></p>
-          <div class="notice">
-            <h3>Quick Order Confirmation</h3>
-            <p>To expedite packing and dispatch, tap below to notify our operations team with one click:</p>
-            <div class="row">${wa}${em}</div>
+          <h1>Thank you, ${esc((o.customer ? o.customer.name : o.name || "Customer").split(" ")[0])}!</h1>
+          <p class="lead">Your order has been recorded successfully. Order reference: <span class="oid">#${o.id}</span></p>
+
+          <!-- Auto Confirmation & WhatsApp Actions -->
+          <div class="notice" style="background:var(--coal);color:var(--cream);border-color:var(--gold)">
+            <h3 style="color:var(--gold-hi);margin-bottom:8px">Order Confirmation & Receipt</h3>
+            <p style="font-size:14px;color:var(--sand);margin-bottom:14px">An official order record has been created in our database. Tap below to send confirmation directly to WhatsApp or track progress live:</p>
+            <div class="row" style="display:flex;gap:10px;flex-wrap:wrap">${waToCustomer}${trackBtn}${emailBtn}</div>
           </div>
+
           <div class="notice">
             <h3>Payment Method: ${payMethod.name}</h3>
             <p>${payMethod.detail || "Please keep payment ready upon delivery."}</p>
             <p style="margin:0">Total Amount: <b style="color:var(--gold-hi)">${money(o.total)}</b></p>
           </div>
+
           <div class="box">
             <h2>Order Receipt</h2>
             <div class="sum">
-              ${o.items.map(i => `<div><span>${esc(i.name)} (${esc(i.weight)}) × ${i.qty}</span><span>${money(i.qty * i.price)}</span></div>`).join("")}
-              <div><span>Shipping</span><span>${money(o.ship)}</span></div>
+              ${o.items.map(i => `<div><span>${esc(i.name)} (${esc(i.weight || "")}) × ${i.qty}</span><span>${money(i.qty * i.price)}</span></div>`).join("")}
+              <div><span>Shipping</span><span>${money(o.shipping || o.ship || 0)}</span></div>
               <div class="tot"><span>Total</span><span>${money(o.total)}</span></div>
             </div>
             <hr style="border:0;border-top:1px solid rgba(27,21,12,.12);margin:22px 0">
-            <p><b>Delivery To:</b><br>${esc(o.name)} · ${esc(o.phone)}<br>${esc(o.addr)}, ${esc(o.city)}, ${esc(o.prov)}${o.zip ? " " + esc(o.zip) : ""}</p>
+            <p><b>Delivery To:</b><br>${esc(o.customer ? o.customer.name : o.name)} · ${esc(o.customer ? o.customer.phone : o.phone)}<br>${esc(o.customer ? o.customer.address : o.addr)}, ${esc(o.customer ? o.customer.city : o.city)}${o.zip ? " " + esc(o.zip) : ""}</p>
             <p style="margin-top:12px"><b>Payment:</b> ${payMethod.name}</p>
           </div>
-          <div style="text-align:center;margin-top:28px">
+
+          <div style="display:flex;justify-content:center;gap:14px;margin-top:28px;flex-wrap:wrap">
+            <a class="btn btn-gold" href="#/track/${o.id}">Track Live Consignment</a>
             <a class="btn btn-ink-line" href="#/shop">Continue Shopping</a>
           </div>
+        </div>
+      </section>
+    `
+  };
+};
+
+views.track = (orderIdParam) => {
+  const brand = window.BRAND_CONFIG.brand;
+  const C = window.BRAND_CONFIG.contact;
+  let o = orderIdParam ? (typeof findOrder === "function" ? findOrder(orderIdParam) : null) : (lastOrder || null);
+
+  const statusLevels = {
+    "pending": 1,
+    "approved": 2,
+    "processing": 3,
+    "dispatched": 4,
+    "shipped": 4,
+    "delivered": 5,
+    "cancelled": 0
+  };
+  const currentLvl = o ? (statusLevels[(o.status || "pending").toLowerCase()] || 1) : 1;
+
+  const trackContent = o ? `
+    <div class="track-card">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:16px;border-bottom:1px solid var(--hair);padding-bottom:20px;margin-bottom:24px">
+        <div>
+          <span style="font-size:12px;text-transform:uppercase;letter-spacing:0.08em;color:var(--gold-hi)">Live Order Tracking</span>
+          <h2 style="font-size:26px;color:var(--cream);margin:4px 0 2px">Order #${esc(o.id)}</h2>
+          <small style="color:var(--mute-dark)">Placed on ${o.dateFormatted || (typeof formatOrderDate === "function" ? formatOrderDate(o.createdAt) : new Date(o.createdAt).toLocaleString())}</small>
+        </div>
+        <div style="text-align:right">
+          <span class="status-pill status-${(o.status || 'pending').toLowerCase()}" style="font-size:13px;padding:6px 14px">${o.status}</span>
+          <div style="margin-top:6px;font-size:13.5px;color:var(--sand)">Payment: <b>${o.paymentMethod || "Cash on Delivery"}</b></div>
+        </div>
+      </div>
+
+      <!-- Visual 5-Step Progress Stepper -->
+      <div class="track-stepper">
+        <div class="step-node ${currentLvl >= 1 ? (currentLvl === 1 ? 'active' : 'completed') : ''}">
+          <div class="step-circle">${currentLvl > 1 ? '✓' : '📝'}</div>
+          <span class="step-label">Order Placed</span>
+          <span class="step-time">${o.timeline && o.timeline[0] ? o.timeline[0].time : 'Recorded'}</span>
+        </div>
+        <div class="step-node ${currentLvl >= 2 ? (currentLvl === 2 ? 'active' : 'completed') : ''}">
+          <div class="step-circle">${currentLvl > 2 ? '✓' : '✅'}</div>
+          <span class="step-label">Approved</span>
+          <span class="step-time">${currentLvl >= 2 ? 'Confirmed' : 'Pending'}</span>
+        </div>
+        <div class="step-node ${currentLvl >= 3 ? (currentLvl === 3 ? 'active' : 'completed') : ''}">
+          <div class="step-circle">${currentLvl > 3 ? '✓' : '📦'}</div>
+          <span class="step-label">Packed & Sealed</span>
+          <span class="step-time">${currentLvl >= 3 ? 'Ready' : 'In Queue'}</span>
+        </div>
+        <div class="step-node ${currentLvl >= 4 ? (currentLvl === 4 ? 'active' : 'completed') : ''}">
+          <div class="step-circle">${currentLvl > 4 ? '✓' : '🚚'}</div>
+          <span class="step-label">Dispatched</span>
+          <span class="step-time">${currentLvl >= 4 ? (o.tracking && o.tracking.courier ? o.tracking.courier : 'In Transit') : 'Awaiting'}</span>
+        </div>
+        <div class="step-node ${currentLvl === 5 ? 'completed active' : ''}">
+          <div class="step-circle">${currentLvl === 5 ? '🎉' : '🏠'}</div>
+          <span class="step-label">Delivered</span>
+          <span class="step-time">${currentLvl === 5 ? 'Completed' : 'Expected'}</span>
+        </div>
+      </div>
+
+      <!-- Courier Partner & Consignment Box -->
+      ${o.tracking && o.tracking.trackingNumber ? `
+        <div style="background:rgba(214,167,54,0.08);border:1.5px solid var(--gold);border-radius:var(--r-md);padding:20px;margin-bottom:28px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px">
+          <div>
+            <div style="font-size:12px;text-transform:uppercase;color:var(--gold-hi);font-weight:600">Courier Partner Details</div>
+            <div style="font-size:18px;font-weight:700;color:var(--cream);margin-top:2px">🚚 ${esc(o.tracking.courier || "Courier Partner")}</div>
+            <div style="font-size:13.5px;color:var(--sand);margin-top:2px">Tracking Number: <b style="font-family:monospace;color:var(--gold-hi);font-size:15px">${esc(o.tracking.trackingNumber)}</b></div>
+          </div>
+          <div style="display:flex;gap:10px">
+            <button class="btn btn-gold btn-sm" onclick="navigator.clipboard.writeText('${esc(o.tracking.trackingNumber)}'); toast('Tracking number copied!');">Copy Tracking ID</button>
+          </div>
+        </div>
+      ` : `
+        <div style="background:rgba(255,255,255,0.02);border:1px dashed var(--hair);border-radius:var(--r-md);padding:18px;margin-bottom:28px;display:flex;align-items:center;gap:12px">
+          <span style="font-size:24px">📦</span>
+          <div>
+            <b style="color:var(--cream);font-size:14.5px">Standard Dispatch Courier Service</b>
+            <p style="margin:2px 0 0;font-size:13px;color:var(--mute-dark)">Your items will be dispatched via express insured courier (TCS / Leopards / Trax) within 24–48 business hours.</p>
+          </div>
+        </div>
+      `}
+
+      <!-- 2 Columns: Order Items & Live Activity Log -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:28px">
+        <div>
+          <h3 style="font-size:17px;color:var(--cream);margin-bottom:14px;border-bottom:1px solid rgba(214,167,54,0.15);padding-bottom:8px">Order Summary</h3>
+          <div class="co-items" style="max-height:280px;overflow-y:auto">
+            ${(o.items || []).map(i => `
+              <div class="li" style="padding-block:10px">
+                <div>
+                  <h3 style="font-size:14.5px">${esc(i.name)}</h3>
+                  <small style="color:var(--mute-dark)">${esc(i.weight || "")} × ${i.qty}</small>
+                </div>
+                <b>${money(i.qty * i.price)}</b>
+              </div>
+            `).join("")}
+          </div>
+          <div class="sum" style="margin-top:16px">
+            <div><span>Subtotal</span><span>${money(o.subtotal || o.total)}</span></div>
+            <div><span>Delivery</span><span>${o.shipping === 0 ? '<span class="tag tag-emerald">FREE SHIPPING</span>' : money(o.shipping || 0)}</span></div>
+            <div class="tot"><span>Total Amount</span><span style="color:var(--gold-hi)">${money(o.total)}</span></div>
+          </div>
+          <div style="margin-top:16px;background:rgba(255,255,255,0.02);padding:14px;border-radius:var(--r-sm);border:1px solid var(--hair)">
+            <b style="color:var(--cream);font-size:13px">Shipping Destination:</b>
+            <p style="margin:4px 0 0;font-size:13px;color:var(--sand);line-height:1.4">
+              ${esc(o.customer ? o.customer.name : o.name)} · ${esc(o.customer ? o.customer.phone : o.phone)}<br>
+              ${esc(o.customer ? o.customer.address : o.addr)}, ${esc(o.customer ? o.customer.city : o.city)}
+            </p>
+          </div>
+        </div>
+
+        <div>
+          <h3 style="font-size:17px;color:var(--cream);margin-bottom:14px;border-bottom:1px solid rgba(214,167,54,0.15);padding-bottom:8px">Tracking Activity & History</h3>
+          <div class="track-timeline">
+            ${(o.timeline || []).slice().reverse().map(ev => `
+              <div class="timeline-item">
+                <h4>${esc(ev.title)}</h4>
+                <small>${esc(ev.time)}</small>
+                <p>${esc(ev.note || "")}</p>
+              </div>
+            `).join("")}
+          </div>
+
+          <div style="margin-top:28px;padding-top:18px;border-top:1px solid var(--hair)">
+            <b style="color:var(--cream);font-size:13.5px">Customer Service & WhatsApp Updates:</b>
+            <p style="margin:4px 0 12px;font-size:13px;color:var(--mute-dark)">Need an instant update or modification? Chat directly with our fulfillment operations team:</p>
+            <a class="btn btn-gold btn-sm" target="_blank" rel="noopener" href="https://wa.me/${C.whatsapp}?text=${encodeURIComponent('Hi ' + brand.name + ', I would like an update on my Order #' + o.id)}">
+              Chat on WhatsApp
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  ` : `
+    <div class="track-card" style="max-width:580px;margin:40px auto;text-align:center;padding:44px 32px">
+      <div style="width:64px;height:64px;border-radius:50%;background:rgba(214,167,54,0.15);color:var(--gold-hi);display:grid;place-items:center;font-size:30px;margin:0 auto 16px">🔍</div>
+      <h2 style="font-size:24px;color:var(--cream);margin-bottom:8px">Track Your Order Status</h2>
+      <p style="font-size:14.5px;color:var(--mute-dark);margin-bottom:28px">Enter your Order ID (e.g. MSR-261014-4821) or your 11-digit mobile number to view live consignment tracking.</p>
+      
+      <form onsubmit="event.preventDefault(); const q = document.getElementById('trackQueryInput').value.trim(); if(q) location.hash = '#/track/' + encodeURIComponent(q);">
+        <div class="f" style="margin-bottom:16px">
+          <input id="trackQueryInput" placeholder="Enter Order ID or Mobile Number (03XXXXXXXXX)" required style="font-size:16px;text-align:center;padding:14px">
+        </div>
+        <button type="submit" class="btn btn-gold btn-block" style="padding-block:14px">Search & Track Order</button>
+      </form>
+
+      ${lastOrder ? `
+        <div style="margin-top:24px;padding-top:18px;border-top:1px solid var(--hair);font-size:13.5px;color:var(--sand)">
+          <span>Recently placed order found: </span>
+          <a href="#/track/${lastOrder.id}" style="color:var(--gold-hi);font-weight:600">Track #${lastOrder.id} →</a>
+        </div>
+      ` : ""}
+    </div>
+  `;
+
+  return {
+    title: `Order Tracking | ${brand.name}`,
+    html: `
+      <header class="page-head">
+        <div class="wrap">
+          <nav class="crumbs" aria-label="Breadcrumb"><a href="#/">Home</a> / <span>Order Tracking</span></nav>
+          <h1>Real-Time Order Tracking</h1>
+          <p class="sub">Monitor live status, packaging milestones, and courier delivery progress.</p>
+        </div>
+      </header>
+      <section class="page sec-black">
+        <div class="wrap">
+          ${trackContent}
         </div>
       </section>
     `

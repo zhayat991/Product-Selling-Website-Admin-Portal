@@ -64,6 +64,7 @@ function shell() {
   const nav = [
     ["home", "Home", "#/"],
     ["shop", "Shop", "#/shop"],
+    ["track", "Track Order", "#/track"],
     ["about", "About Us", "#/about"],
     ["contact", "Contact", "#/contact"]
   ];
@@ -411,18 +412,18 @@ document.addEventListener("click", e => {
   } else if (act === "add") {
     const p = getP(actBtn.dataset.pid);
     if (!p || !canBuy(p)) return;
-    const qInp = $("#" + actBtn.dataset.q);
+    const qInp = actBtn.dataset.q ? $("#" + actBtn.dataset.q) : null;
     const qty = clampQ(qInp ? qInp.value : 1);
     cart.items[p.id] = Math.min((cart.items[p.id] || 0) + qty, MAXQ);
     saveCart();
     updateBadge(true);
-    toast(`${qty} × ${p.name} added to cart`, ["View Cart", "#/cart"]);
+    toast(`${qty} × ${p.name} (${p.weight}) added to cart`, ["View Cart", "#/cart"]);
   } else if (act === "buy") {
     const p = getP(actBtn.dataset.pid);
     if (!p || !canBuy(p)) return;
-    const qInp = $("#" + actBtn.dataset.q);
+    const qInp = actBtn.dataset.q ? $("#" + actBtn.dataset.q) : null;
     const qty = clampQ(qInp ? qInp.value : 1);
-    cart.items[p.id] = qty;
+    cart.items[p.id] = Math.max(cart.items[p.id] || 0, qty);
     saveCart();
     location.hash = "#/checkout";
   } else if (act === "remove") {
