@@ -13,9 +13,63 @@
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Jost:wght@400;500;600;700&display=swap" rel="stylesheet">
 
   <!-- Shared Design System & UI Kit Styles -->
-  <link rel="stylesheet" href="styles/theme.css">
-  <link rel="stylesheet" href="styles/ui-kit.css">
-  <link rel="stylesheet" href="styles/admin.css">
+  <link rel="stylesheet" href="styles/theme.css?v=2">
+  <link rel="stylesheet" href="styles/ui-kit.css?v=2">
+  <link rel="stylesheet" href="styles/admin.css?v=2">
+  <style>
+    .admin-body label, .dlg label, dialog label {
+      color: #f4d77f !important;
+      font-size: 13.5px !important;
+      font-weight: 600 !important;
+      letter-spacing: 0.015em !important;
+      display: flex !important;
+      align-items: center !important;
+      gap: 6px !important;
+      margin-bottom: 6px !important;
+    }
+    .admin-body label .req, .dlg label .req, dialog label .req {
+      color: #ef4444 !important;
+      font-weight: 700 !important;
+      font-size: 14px !important;
+    }
+    .admin-body label .hint, .dlg label .hint, dialog label .hint {
+      font-size: 11.5px !important;
+      font-weight: 400 !important;
+      color: #bdae8e !important;
+    }
+    .admin-body input:not([type="checkbox"]):not([type="radio"]):not([type="color"]),
+    .admin-body select,
+    .admin-body textarea,
+    .dlg input:not([type="checkbox"]):not([type="radio"]):not([type="color"]),
+    .dlg select,
+    .dlg textarea,
+    dialog input:not([type="checkbox"]):not([type="radio"]):not([type="color"]),
+    dialog select,
+    dialog textarea {
+      width: 100% !important;
+      background: #14100a !important;
+      border: 1.5px solid rgba(214, 167, 54, 0.35) !important;
+      color: #fffdf8 !important;
+      border-radius: 8px !important;
+      padding: 12px 14px !important;
+      font-size: 14.5px !important;
+      box-sizing: border-box !important;
+      transition: all 0.2s ease !important;
+    }
+    .admin-body input:focus, .admin-body select:focus, .admin-body textarea:focus,
+    .dlg input:focus, .dlg select:focus, .dlg textarea:focus,
+    dialog input:focus, dialog select:focus, dialog textarea:focus {
+      background: #1c160e !important;
+      border-color: #d6a736 !important;
+      box-shadow: 0 0 0 3px rgba(214, 167, 54, 0.25) !important;
+      outline: none !important;
+    }
+    .admin-body input::placeholder, .admin-body textarea::placeholder,
+    .dlg input::placeholder, .dlg textarea::placeholder,
+    dialog input::placeholder, dialog textarea::placeholder {
+      color: rgba(189, 174, 142, 0.5) !important;
+    }
+  </style>
 </head>
 <body class="admin-body">
 
@@ -314,6 +368,9 @@
   <!-- Product Add / Edit Modal -->
   <dialog id="dlg-product-modal" aria-label="Product Editor"></dialog>
 
+  <!-- Restock Product Modal -->
+  <dialog id="dlg-restock-modal" aria-label="Restock Product"></dialog>
+
   <!-- Export Config Dialog -->
   <dialog id="dlg-export-config" aria-label="Export Brand Configuration"></dialog>
 
@@ -321,12 +378,12 @@
   <div id="toast" role="status" aria-live="polite"></div>
 
   <!-- Shared Configuration & Data Scripts -->
-  <script src="config/brand.config.js"></script>
-  <script src="config/theme.config.js"></script>
-  <script src="data/products.js"></script>
-  <script src="js/store.js"></script>
+  <script src="config/brand.config.js?v=2"></script>
+  <script src="config/theme.config.js?v=2"></script>
+  <script src="data/products.js?v=2"></script>
+  <script src="js/store.js?v=2"></script>
 
   <!-- Admin Controller -->
-  <script src="js/admin.js"></script>
+  <script src="js/admin.js?v=2"></script>
 </body>
 </html>
