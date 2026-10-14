@@ -41,18 +41,41 @@ const money = (amount) => {
 const MAXQ = 20;
 const clampQ = (q) => Math.min(Math.max(parseInt(q) || 1, 1), MAXQ);
 
-const getP = (id) => (window.PRODUCTS || []).find((p) => p.id === id);
-const getPBySlug = (slug) => (window.PRODUCTS || []).find((p) => p.slug === slug);
-const canBuy = (p) => p && p.price != null;
-const priceTxt = (p) => canBuy(p) ? money(p.price) : "Price on Request";
+function getProducts() {
+  const stored = Store.get("app_products");
+  if (stored && Array.isArray(stored) && stored.length > 0) {
+    window.PRODUCTS = stored;
+    return stored;
+  }
+  if (window.PRODUCTS && Array.isArray(window.PRODUCTS)) {
+    Store.set("app_products", window.PRODUCTS);
+    return window.PRODUCTS;
+  }
+  return [];
+}
+
+function saveProducts(prods) {
+  window.PRODUCTS = prods;
+  Store.set("app_products", prods);
+}
+
+const getP = (id) => getProducts().find((p) => p.id === id);
+const getPBySlug = (slug) => getProducts().find((p) => p.slug === slug);
+const canBuy = (p) => p && p.price != null && (p.stock == null || p.stock > 0);
+const priceTxt = (p) => {
+  if (!p) return "";
+  if (p.stock !== undefined && p.stock <= 0) return "Out of Stock";
+  return p.price != null ? money(p.price) : "Price on Request";
+};
 
 // Cart State
 let cart = { items: {} };
 
 function initCart() {
+  const prods = getProducts();
   const savedCart = Store.get("app_cart") || Store.get("msr_cart") || {};
   const src = savedCart.items || {};
-  (window.PRODUCTS || []).forEach((p) => {
+  prods.forEach((p) => {
     const q = Math.min(Math.max(parseInt(src[p.id]) || 0, 0), MAXQ);
     if (q && canBuy(p)) {
       cart.items[p.id] = q;
