@@ -64,8 +64,8 @@ function shell() {
   const nav = [
     ["home", "Home", "#/"],
     ["shop", "Shop", "#/shop"],
+    ["track", "Track Order", "#/track"],
     ["about", "About Us", "#/about"],
-    ["products", "Collection", "#/products"],
     ["contact", "Contact", "#/contact"]
   ];
 
@@ -89,6 +89,7 @@ function shell() {
         </a>
         <button class="ic" data-act="account" aria-label="Account">${ICON.user}</button>
         <a class="btn btn-gold btn-sm" href="#/shop">Shop Now</a>
+        <a class="btn btn-line btn-sm" href="admin.html" target="_blank" title="Open Admin Portal" style="border-color:var(--hair);color:var(--gold-hi)">Admin ⚙️</a>
         <button class="ic burger" data-act="menu" aria-label="Open navigation menu">${ICON.menu}</button>
       </div>
     </div>
@@ -150,6 +151,7 @@ function shell() {
             <li><a href="#/shop">Shop</a></li>
             <li><a href="#/about">About Us</a></li>
             <li><a href="#/contact">Contact Us</a></li>
+            <li><a href="admin.html" target="_blank" style="color:var(--gold-hi)">Admin Portal ↗</a></li>
           </ul>
         </div>
         <div>
@@ -412,18 +414,18 @@ document.addEventListener("click", e => {
   } else if (act === "add") {
     const p = getP(actBtn.dataset.pid);
     if (!p || !canBuy(p)) return;
-    const qInp = $("#" + actBtn.dataset.q);
+    const qInp = actBtn.dataset.q ? $("#" + actBtn.dataset.q) : null;
     const qty = clampQ(qInp ? qInp.value : 1);
     cart.items[p.id] = Math.min((cart.items[p.id] || 0) + qty, MAXQ);
     saveCart();
     updateBadge(true);
-    toast(`${qty} × ${p.name} added to cart`, ["View Cart", "#/cart"]);
+    toast(`${qty} × ${p.name} (${p.weight}) added to cart`, ["View Cart", "#/cart"]);
   } else if (act === "buy") {
     const p = getP(actBtn.dataset.pid);
     if (!p || !canBuy(p)) return;
-    const qInp = $("#" + actBtn.dataset.q);
+    const qInp = actBtn.dataset.q ? $("#" + actBtn.dataset.q) : null;
     const qty = clampQ(qInp ? qInp.value : 1);
-    cart.items[p.id] = qty;
+    cart.items[p.id] = Math.max(cart.items[p.id] || 0, qty);
     saveCart();
     location.hash = "#/checkout";
   } else if (act === "remove") {

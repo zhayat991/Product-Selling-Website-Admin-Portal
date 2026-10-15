@@ -45,25 +45,7 @@ function getProducts() {
   const deletedIds = Store.get("app_deleted_products") || [];
   let stored = Store.get("app_products");
   if (stored && Array.isArray(stored) && stored.length > 0) {
-    // Filter out temporary test products and deleted products
-    stored = stored.filter(p => !p.id.startsWith("test-") && p.slug !== "kashmiri-raw-walnut-delight" && p.name !== "Kashmiri Raw Walnut Delight" && !deletedIds.includes(p.id));
-
-    // Ensure official default 3 products exist (if not deleted) and are ordered 500g first, 1kg second, 250g third
-    if (window.PRODUCTS && Array.isArray(window.PRODUCTS)) {
-      const defaultIds = ["msr-500", "msr-1kg", "msr-250"].filter(id => !deletedIds.includes(id));
-      const officialMap = new Map();
-      window.PRODUCTS.forEach(p => officialMap.set(p.id, p));
-
-      const orderedDefaults = defaultIds.map(id => {
-        const fromStored = stored.find(s => s.id === id);
-        return fromStored || officialMap.get(id);
-      }).filter(Boolean);
-
-      const customProds = stored.filter(p => !defaultIds.includes(p.id));
-      stored = [...orderedDefaults, ...customProds];
-      Store.set("app_products", stored);
-    }
-
+    stored = stored.filter(p => !deletedIds.includes(p.id));
     window.PRODUCTS = stored;
     return stored;
   }
