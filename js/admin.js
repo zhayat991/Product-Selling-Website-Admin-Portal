@@ -1777,6 +1777,10 @@ function initAdmin() {
       renderProductsGrid();
     });
   });
+  window.addEventListener("hashchange", () => {
+    const hash = (location.hash || "").replace(/^#/, "");
+    if (hash && $(`#tab-${hash}`)) switchTab(hash);
+  });
 }
 
 if (document.readyState === "loading") {
