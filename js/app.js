@@ -89,6 +89,7 @@ function shell() {
         </a>
         <button class="ic" data-act="account" aria-label="Account">${ICON.user}</button>
         <a class="btn btn-gold btn-sm" href="#/shop">Shop Now</a>
+        <a class="btn btn-line btn-sm" href="admin.html" target="_blank" title="Open Admin Portal" style="border-color:var(--hair);color:var(--gold-hi)">Admin ⚙️</a>
         <button class="ic burger" data-act="menu" aria-label="Open navigation menu">${ICON.menu}</button>
       </div>
     </div>
@@ -150,6 +151,7 @@ function shell() {
             <li><a href="#/shop">Shop</a></li>
             <li><a href="#/about">About Us</a></li>
             <li><a href="#/contact">Contact Us</a></li>
+            <li><a href="admin.html" target="_blank" style="color:var(--gold-hi)">Admin Portal ↗</a></li>
           </ul>
         </div>
         <div>
